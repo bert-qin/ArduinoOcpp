@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2024
+// Copyright Matthias Akstaller 2019 - 2023
 // MIT License
 
 #include <MicroOcpp/Operations/StatusNotification.h>
@@ -92,6 +92,7 @@ std::unique_ptr<DynamicJsonDocument> StatusNotification::createReq() {
 
     return doc;
 }
+
 
 void StatusNotification::processConf(JsonObject payload) {
     /*

@@ -129,12 +129,12 @@ bool Timestamp::toJsonString(char *jsonDateString, size_t buffsize) const {
     jsonDateString[16] = ':';
     jsonDateString[17] = ((char) ((second / 10) % 10))  + '0';
     jsonDateString[18] = ((char) ((second / 1) % 10))  + '0';
-    jsonDateString[19] = '.';
-    jsonDateString[20] = ((char) ((ms / 100) % 10))  + '0';
-    jsonDateString[21] = ((char) ((ms / 10) % 10))  + '0';
-    jsonDateString[22] = ((char) ((ms / 1) % 10))  + '0';
-    jsonDateString[23] = 'Z';
-    jsonDateString[24] = '\0';
+    // jsonDateString[19] = '.';
+    // jsonDateString[20] = ((char) ((ms / 100) % 10))  + '0';
+    // jsonDateString[21] = ((char) ((ms / 10) % 10))  + '0';
+    // jsonDateString[22] = ((char) ((ms / 1) % 10))  + '0';
+    jsonDateString[19] = 'Z';
+    jsonDateString[20] = '\0';
 
     return true;
 }

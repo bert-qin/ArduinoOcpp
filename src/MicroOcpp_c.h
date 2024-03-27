@@ -18,23 +18,23 @@ typedef struct OCPP_Connection OCPP_Connection;
 struct MeterValueInput;
 typedef struct MeterValueInput MeterValueInput;
 
-typedef void (*OnMessage) (const char *payload, size_t len);
-typedef void (*OnAbort)   ();
-typedef void (*OnTimeout) ();
-typedef void (*OnCallError)   (const char *code, const char *description, const char *details_json, size_t details_len);
-typedef void (*AuthorizeConfCallback)    (const char *idTag, const char *payload, size_t len, void *user_data);
-typedef void (*AuthorizeAbortCallback)   (const char *idTag, void* user_data);
-typedef void (*AuthorizeTimeoutCallback) (const char *idTag, void* user_data);
-typedef void (*AuthorizeErrorCallback)   (const char *idTag, const char *code, const char *description, const char *details_json, size_t details_len, void* user_data);
+typedef void (*OnMessage)(const char *payload, size_t len);
+typedef void (*OnAbort)();
+typedef void (*OnTimeout)();
+typedef void (*OnCallError)(const char *code, const char *description, const char *details_json, size_t details_len);
+typedef void (*AuthorizeConfCallback)(const char *idTag, const char *payload, size_t len, void *user_data);
+typedef void (*AuthorizeAbortCallback)(const char *idTag, void *user_data);
+typedef void (*AuthorizeTimeoutCallback)(const char *idTag, void *user_data);
+typedef void (*AuthorizeErrorCallback)(const char *idTag, const char *code, const char *description, const char *details_json, size_t details_len, void *user_data);
 
 typedef float (*InputFloat)();
-typedef float (*InputFloat_m)(unsigned int connectorId); //multiple connectors version
-typedef int   (*InputInt)();
-typedef int   (*InputInt_m)(unsigned int connectorId);
-typedef bool  (*InputBool)();
-typedef bool  (*InputBool_m)(unsigned int connectorId);
-typedef const char* (*InputString)();
-typedef const char* (*InputString_m)(unsigned int connectorId);
+typedef float (*InputFloat_m)(unsigned int connectorId); // multiple connectors version
+typedef int (*InputInt)();
+typedef int (*InputInt_m)(unsigned int connectorId);
+typedef bool (*InputBool)();
+typedef bool (*InputBool_m)(unsigned int connectorId);
+typedef const char *(*InputString)();
+typedef const char *(*InputString_m)(unsigned int connectorId);
 typedef void (*OutputFloat)(float limit);
 typedef void (*OutputFloat_m)(unsigned int connectorId, float limit);
 typedef void (*OutputSmartCharging)(float power, float current, int nphases);
@@ -42,7 +42,8 @@ typedef void (*OutputSmartCharging_m)(unsigned int connectorId, float power, flo
 enum OptionalBool {OptionalTrue, OptionalFalse, OptionalNone};
 typedef enum OptionalBool (*PollBool)();
 typedef enum OptionalBool (*PollBool_m)(unsigned int connectorId);
-
+// bert add
+typedef bool (*onFwDownInstall)(const char *location);
 
 #ifdef __cplusplus
 extern "C" {
@@ -186,6 +187,13 @@ void ocpp_authorize(const char *idTag, AuthorizeConfCallback onConfirmation, Aut
 void ocpp_startTransaction(const char *idTag, OnMessage onConfirmation, OnAbort onAbort, OnTimeout onTimeout, OnCallError onError);
 
 void ocpp_stopTransaction(OnMessage onConfirmation, OnAbort onAbort, OnTimeout onTimeout, OnCallError onError);
+
+    // bert add
+    void ocpp_setOnFwDownload(onFwDownInstall onFwDownload);
+    void ocpp_setDownloadStatusInput(PollBool fn);
+    void ocpp_setOnFwInstall(onFwDownInstall onFwInstall);
+    void ocpp_setInstallationStatusInput(PollBool fn);
+    bool ocpp_isReserved_m(unsigned int connectorId);
 
 #ifdef __cplusplus
 }

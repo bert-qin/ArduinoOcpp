@@ -107,6 +107,9 @@ if(ESP_PLATFORM)
         -DMO_CUSTOM_WS
         -DMO_CUSTOM_UPDATER
         -DMO_CUSTOM_RESET
+        -DMO_NUMCONNECTORS=2
+        -DMO_DBG_LEVEL=MO_DL_DEBUG
+        -DMO_TRAFFIC_OUT
         )
 
     return()

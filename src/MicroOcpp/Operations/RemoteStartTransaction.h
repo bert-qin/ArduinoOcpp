@@ -23,6 +23,8 @@ private:
     
     const char *errorCode {nullptr};
     const char *errorDescription = "";
+    // bert add
+    std::shared_ptr<Configuration> authorizeRemoteTxRequests;
 public:
     RemoteStartTransaction(Model& model);
 

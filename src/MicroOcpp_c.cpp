@@ -9,6 +9,7 @@
 
 #include <MicroOcpp/Platform.h>
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Model/FirmwareManagement/FirmwareService.h>
 
 MicroOcpp::Connection *ocppSocket = nullptr;
 
@@ -21,7 +22,7 @@ void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCre
         MO_DBG_ERR("conn is null");
     }
 
-    ocppSocket = reinterpret_cast<MicroOcpp::Connection*>(conn);
+    ocppSocket = reinterpret_cast<MicroOcpp::Connection *>(conn);
 
     MicroOcpp::FilesystemOpt adaptFsopt = fsopt;
 
@@ -385,4 +386,70 @@ void ocpp_startTransaction(const char *idTag, OnMessage onConfirmation, OnAbort 
 
 void ocpp_stopTransaction(OnMessage onConfirmation, OnAbort onAbort, OnTimeout onTimeout, OnCallError onError) {
     stopTransaction(adaptFn(onConfirmation), adaptFn(onAbort), adaptFn(onTimeout), adaptFn(onError));
+}
+
+// bert add
+void ocpp_setOnFwDownload(onFwDownInstall onFwDownload)
+{
+    getFirmwareService()->setOnDownload(onFwDownload);
+}
+
+void ocpp_setDownloadStatusInput(PollBool fn)
+{
+    getFirmwareService()->setDownloadStatusInput(
+        [fn]()
+        {
+        auto v = fn();
+        if (v == OptionalTrue)
+        {
+            return MicroOcpp::DownloadStatus::Downloaded;
+        }
+        else if (v == OptionalFalse)
+        {
+            return MicroOcpp::DownloadStatus::DownloadFailed;
+        }
+        else if (v == OptionalNone)
+        {
+            return MicroOcpp::DownloadStatus::NotDownloaded;
+        }
+        else
+        {
+            MO_DBG_ERR("illegal argument");
+            return MicroOcpp::DownloadStatus::NotDownloaded;
+        } });
+}
+
+void ocpp_setOnFwInstall(onFwDownInstall onFwInstall)
+{
+    getFirmwareService()->setOnInstall(onFwInstall);
+}
+
+void ocpp_setInstallationStatusInput(PollBool fn)
+{
+    getFirmwareService()->setInstallationStatusInput(
+        [fn]()
+        {
+        auto v = fn();
+        if (v == OptionalTrue)
+        {
+            return MicroOcpp::InstallationStatus::Installed;
+        }
+        else if (v == OptionalFalse)
+        {
+            return MicroOcpp::InstallationStatus::InstallationFailed;
+        }
+        else if (v == OptionalNone)
+        {
+            return MicroOcpp::InstallationStatus::NotInstalled;
+        }
+        else
+        {
+            MO_DBG_ERR("illegal argument");
+            return MicroOcpp::InstallationStatus::NotInstalled;
+        } });
+}
+
+bool ocpp_isReserved_m(unsigned int connectorId)
+{
+    return isReserved(connectorId);
 }

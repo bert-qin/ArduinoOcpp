@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2024
+// Copyright Matthias Akstaller 2019 - 2023
 // MIT License
 
 #include <string>
@@ -36,7 +36,9 @@ ConnectorsCommon::ConnectorsCommon(Context& context, unsigned int numConn, std::
     /*
      * Further configuration keys which correspond to the Core profile
      */
-    declareConfiguration<bool>("AuthorizeRemoteTxRequests", false, CONFIGURATION_VOLATILE, true);
+    // bert modify
+    // declareConfiguration<bool>("AuthorizeRemoteTxRequests", false, CONFIGURATION_VOLATILE, true);
+    declareConfiguration<bool>("AuthorizeRemoteTxRequests", false);
     declareConfiguration<int>("GetConfigurationMaxKeys", 30, CONFIGURATION_VOLATILE, true);
     
     context.getOperationRegistry().registerOperation("ChangeAvailability", [&context] () {

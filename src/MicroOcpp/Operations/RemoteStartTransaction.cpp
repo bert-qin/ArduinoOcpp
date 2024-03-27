@@ -13,7 +13,8 @@
 using MicroOcpp::Ocpp16::RemoteStartTransaction;
 
 RemoteStartTransaction::RemoteStartTransaction(Model& model) : model(model) {
-  
+    // bert add
+    authorizeRemoteTxRequests = declareConfiguration<bool>("AuthorizeRemoteTxRequests", false);
 }
 
 const char* RemoteStartTransaction::getOperationType() {
@@ -97,7 +98,13 @@ void RemoteStartTransaction::processReq(JsonObject payload) {
         }
 
         if (success) {
-            auto tx = selectConnector->beginTransaction_authorized(idTag);
+            // bert modify
+            std::shared_ptr<Transaction> tx;
+            if(authorizeRemoteTxRequests && authorizeRemoteTxRequests->getBool()){
+                tx = selectConnector->beginTransaction(idTag);
+            }else{
+                tx = selectConnector->beginTransaction_authorized(idTag);
+            }
             selectConnector->updateTxNotification(TxNotification::RemoteStart);
             if (tx) {
                 if (chargingProfileId >= 0) {

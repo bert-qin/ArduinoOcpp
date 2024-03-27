@@ -26,7 +26,7 @@ void SendLocalList::processReq(JsonObject payload) {
         return;
     }
 
-    if (payload.containsKey("localAuthorizationList") && !payload["localAuthorizationList"].is<JsonArray>()) {
+    if (!payload["localAuthorizationList"].is<JsonArray>()) {
         errorCode = "FormationViolation";
         return;
     }

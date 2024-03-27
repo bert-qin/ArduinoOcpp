@@ -1117,3 +1117,16 @@ bool stopTransaction(OnReceiveConfListener onConf, OnAbortListener onAbort, OnTi
 
     return true;
 }
+
+// bert add
+bool isReserved(unsigned int connectorId) {
+    if (!context) {
+        MO_DBG_WARN("OCPP uninitialized");
+        return false; //assume "false" as default state
+    }
+    auto reservation = context->getModel().getReservationService()->getReservation(connectorId);
+    if(!reservation){
+        return false;
+    }
+    return connectorId == reservation->getConnectorId()?true:false;
+}

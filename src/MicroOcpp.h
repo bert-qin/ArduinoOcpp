@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2024
+// Copyright Matthias Akstaller 2019 - 2023
 // MIT License
 
 #ifndef MO_MICROOCPP_H
@@ -517,4 +517,6 @@ bool stopTransaction(
             OnReceiveErrorListener onError = nullptr,
             unsigned int timeout = 0);
 
+// bert add
+bool isReserved(unsigned int connectorId);
 #endif

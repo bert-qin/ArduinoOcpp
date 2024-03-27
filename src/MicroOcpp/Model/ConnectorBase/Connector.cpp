@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2024
+// Copyright Matthias Akstaller 2019 - 2023
 // MIT License
 
 #include <MicroOcpp/Model/ConnectorBase/Connector.h>
@@ -407,7 +407,7 @@ void Connector::loop() {
             }
         }
     }
-
+    
     if (status != currentStatus) {
         currentStatus = status;
         t_statusTransition = mocpp_tick_ms();

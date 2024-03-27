@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2024
+// Copyright Matthias Akstaller 2019 - 2023
 // MIT License
 
 #ifndef OCPP_EVSE_STATE
