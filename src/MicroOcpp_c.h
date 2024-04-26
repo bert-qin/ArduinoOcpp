@@ -44,6 +44,7 @@ typedef enum OptionalBool (*PollBool)();
 typedef enum OptionalBool (*PollBool_m)(unsigned int connectorId);
 // bert add
 typedef bool (*onFwDownInstall)(const char *location);
+typedef bool (*onUpload)(const char *location);
 
 #ifdef __cplusplus
 extern "C" {
@@ -188,12 +189,14 @@ void ocpp_startTransaction(const char *idTag, OnMessage onConfirmation, OnAbort 
 
 void ocpp_stopTransaction(OnMessage onConfirmation, OnAbort onAbort, OnTimeout onTimeout, OnCallError onError);
 
-    // bert add
-    void ocpp_setOnFwDownload(onFwDownInstall onFwDownload);
-    void ocpp_setDownloadStatusInput(PollBool fn);
-    void ocpp_setOnFwInstall(onFwDownInstall onFwInstall);
-    void ocpp_setInstallationStatusInput(PollBool fn);
-    bool ocpp_isReserved_m(unsigned int connectorId);
+// bert add
+void ocpp_setOnFwDownload(onFwDownInstall onFwDownload);
+void ocpp_setDownloadStatusInput(PollBool fn);
+void ocpp_setOnFwInstall(onFwDownInstall onFwInstall);
+void ocpp_setInstallationStatusInput(PollBool fn);
+bool ocpp_isReserved_m(unsigned int connectorId);
+void ocpp_setOnUpload(onUpload fn);
+void ocpp_setOnUploadStatusInput(PollBool fn);
 
 #ifdef __cplusplus
 }
