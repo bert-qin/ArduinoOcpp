@@ -22,8 +22,10 @@
 #include <MicroOcpp/Model/Reservation/ReservationService.h>
 #include <MicroOcpp/Model/Authorization/AuthorizationService.h>
 #include <MicroOcpp/Model/ConnectorBase/EvseId.h>
+#include <MicroOcpp/Model/Transactions/TransactionService.h>
 
 #include <MicroOcpp/Core/SimpleRequestFactory.h>
+#include <MicroOcpp/Core/Connection.h>
 
 #ifndef MO_TX_CLEAN_ABORTED
 #define MO_TX_CLEAN_ABORTED 1
@@ -55,6 +57,8 @@ Connector::Connector(Context& context, int connectorId)
     //FreeVend mode
     freeVendActiveBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "FreeVendActive", false);
     freeVendIdTagString = declareConfiguration<const char*>(MO_CONFIG_EXT_PREFIX "FreeVendIdTag", "");
+
+    txStartOnPowerPathClosedBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "TxStartOnPowerPathClosed", false);
 
     if (!availabilityBool) {
         MO_DBG_ERR("Cannot declare availabilityBool");
@@ -163,17 +167,29 @@ bool Connector::ocppPermitsCharge() {
         suspendDeAuthorizedIdTag = false;
     }
 
-    return transaction &&
-            transaction->isRunning() &&
-            transaction->isActive() &&
-            !isFaulted() &&
-            !suspendDeAuthorizedIdTag;
+    // check charge permission depending on TxStartPoint
+    if (txStartOnPowerPathClosedBool && txStartOnPowerPathClosedBool->getBool()) {
+        // tx starts when the power path is closed. Advertise charging before transaction
+        return transaction &&
+                transaction->isActive() &&
+                transaction->isAuthorized() &&
+                !suspendDeAuthorizedIdTag;
+    } else {
+        // tx must be started before the power path can be closed
+        return transaction &&
+               transaction->isRunning() &&
+               transaction->isActive() &&
+               !suspendDeAuthorizedIdTag;
+    }
 }
 
 void Connector::loop() {
 
     if (!trackLoopExecute) {
         trackLoopExecute = true;
+        if (connectorPluggedInput) {
+            freeVendTrackPlugged = connectorPluggedInput();
+        }
     }
 
     if (transaction && transaction->isAborted() && MO_TX_CLEAN_ABORTED) {
@@ -201,7 +217,7 @@ void Connector::loop() {
         transaction = nullptr;
     }
 
-    if (transaction && transaction->isCompleted()) {
+    if (transaction && transaction->getStopSync().isRequested()) {
         MO_DBG_DEBUG("collect obsolete transaction %u-%u", connectorId, transaction->getTxNr());
         transaction = nullptr;
     }
@@ -254,6 +270,7 @@ void Connector::loop() {
             if (transaction->isActive() && transaction->isAuthorized() &&  //tx must be authorized
                     (!connectorPluggedInput || connectorPluggedInput()) && //if applicable, connector must be plugged
                     isOperative() && //only start tx if charger is free of error conditions
+                    (!txStartOnPowerPathClosedBool || !txStartOnPowerPathClosedBool->getBool() || !evReadyInput || evReadyInput()) && //if applicable, postpone tx start point to PowerPathClosed
                     (!startTxReadyInput || startTxReadyInput())) { //if defined, user Input for allowing StartTx must be true
                 //start Transaction
 
@@ -409,9 +426,12 @@ void Connector::loop() {
     }
     
     if (status != currentStatus) {
+        MO_DBG_DEBUG("Status changed %s -> %s %s",
+                currentStatus == ChargePointStatus::NOT_SET ? "" : cstrFromOcppEveState(currentStatus),
+                cstrFromOcppEveState(status),
+                minimumStatusDurationInt->getInt() ? " (will report delayed)" : "");
         currentStatus = status;
         t_statusTransition = mocpp_tick_ms();
-        MO_DBG_DEBUG("Status changed%s", minimumStatusDurationInt->getInt() ? ", will report delayed" : "");
     }
 
     if (reportedStatus != currentStatus &&
@@ -653,6 +673,12 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
 
     auto authorize = makeRequest(new Ocpp16::Authorize(context.getModel(), idTag));
     authorize->setTimeout(authorizationTimeoutInt && authorizationTimeoutInt->getInt() > 0 ? authorizationTimeoutInt->getInt() * 1000UL : 20UL * 1000UL);
+
+    if (!context.getConnection().isConnected()) {
+        //WebSockt unconnected. Enter offline mode immediately
+        authorize->setTimeout(1);
+    }
+
     auto tx = transaction;
     authorize->setOnReceiveConfListener([this, tx] (JsonObject response) {
         JsonObject idTagInfo = response["idTagInfo"];
@@ -846,6 +872,28 @@ bool Connector::isOperative() {
         }
     }
 
+    #if MO_ENABLE_V201
+    if (model.getVersion().major == 2 && model.getTransactionService()) {
+        auto txService = model.getTransactionService();
+
+        if (connectorId == 0) {
+            for (unsigned int cId = 1; cId < model.getNumConnectors(); cId++) {
+                if (txService->getEvse(cId)->getTransaction() &&
+                        txService->getEvse(cId)->getTransaction()->started &&
+                        !txService->getEvse(cId)->getTransaction()->stopped) {
+                    return true;
+                }
+            }
+        } else {
+            if (txService->getEvse(connectorId)->getTransaction() &&
+                    txService->getEvse(connectorId)->getTransaction()->started &&
+                    !txService->getEvse(connectorId)->getTransaction()->stopped) {
+                return true;
+            }
+        }
+    }
+    #endif //MO_ENABLE_V201
+
     return availabilityVolatile && availabilityBool->getBool();
 }
 
@@ -881,11 +929,11 @@ void Connector::addErrorDataInput(std::function<ErrorData ()> errorDataInput) {
     this->trackErrorDataInputs.push_back(false);
 }
 
-void Connector::setOnUnlockConnector(std::function<PollResult<bool>()> unlockConnector) {
+void Connector::setOnUnlockConnector(std::function<UnlockConnectorResult()> unlockConnector) {
     this->onUnlockConnector = unlockConnector;
 }
 
-std::function<PollResult<bool>()> Connector::getOnUnlockConnector() {
+std::function<UnlockConnectorResult()> Connector::getOnUnlockConnector() {
     return this->onUnlockConnector;
 }
 

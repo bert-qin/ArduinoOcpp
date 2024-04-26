@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
 
 #ifndef MO_TRANSACTIONEVENT_H
@@ -10,38 +10,35 @@
 #if MO_ENABLE_V201
 
 #include <MicroOcpp/Core/Operation.h>
+#include <MicroOcpp/Core/Time.h>
+
+#include <vector>
 
 namespace MicroOcpp {
 
 class Model;
+class Variable;
 
 namespace Ocpp201 {
 
-class TransactionEventData;
-
-class TransactionEvent : public Operation {
+class NotifyReport : public Operation {
 private:
     Model& model;
-    std::shared_ptr<TransactionEventData> txEvent;
 
-    const char *errorCode = nullptr;
+    int requestId;
+    Timestamp generatedAt;
+    bool tbc;
+    int seqNo;
+    std::vector<Variable*> reportData;
 public:
 
-    TransactionEvent(Model& model, std::shared_ptr<TransactionEventData> txEvent);
+    NotifyReport(Model& model, int requestId, const Timestamp& generatedAt, bool tbc, int seqNo, const std::vector<Variable*>& reportData);
 
     const char* getOperationType() override;
-
-    void initiate(StoredOperationHandler *opStore) override;
 
     std::unique_ptr<DynamicJsonDocument> createReq() override;
 
     void processConf(JsonObject payload) override;
-
-    const char *getErrorCode() override {return errorCode;}
-
-    void processReq(JsonObject payload) override;
-
-    std::unique_ptr<DynamicJsonDocument> createConf() override;
 };
 
 } //end namespace Ocpp201

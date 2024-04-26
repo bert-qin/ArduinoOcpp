@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
 
 #include "MicroOcpp_c.h"
@@ -17,10 +17,8 @@ void ocpp_initialize(OCPP_Connection *conn, const char *chargePointModel, const 
     ocpp_initialize_full(conn, ChargerCredentials(chargePointModel, chargePointVendor), fsopt, autoRecover, NULL);
 }
 
-void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCredentials, struct OCPP_FilesystemOpt fsopt, bool autoRecover, ocpp_certificate_store *certs)
-{
-    if (!conn)
-    {
+void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCredentials, struct OCPP_FilesystemOpt fsopt, bool autoRecover, ocpp_cert_store *certs) {
+    if (!conn) {
         MO_DBG_ERR("conn is null");
     }
 
@@ -51,29 +49,7 @@ void ocpp_loop()
  * Helper functions for transforming callback functions from C-style to C++style
  */
 
-MicroOcpp::PollResult<bool> adaptScl(enum OptionalBool v)
-{
-    if (v == OptionalTrue)
-    {
-        return true;
-    }
-    else if (v == OptionalFalse)
-    {
-        return false;
-    }
-    else if (v == OptionalNone)
-    {
-        return MicroOcpp::PollResult<bool>::Await();
-    }
-    else
-    {
-        MO_DBG_ERR("illegal argument");
-        return false;
-    }
-}
-
-std::function<bool()> adaptFn(InputBool fn)
-{
+std::function<bool()> adaptFn(InputBool fn) {
     return fn;
 }
 
@@ -179,16 +155,12 @@ MicroOcpp::OnReceiveErrorListener adaptFn(OnCallError fn)
     };
 }
 
-std::function<MicroOcpp::PollResult<bool>()> adaptFn(PollBool fn)
-{
-    return [fn]()
-    { return adaptScl(fn()); };
+std::function<UnlockConnectorResult()> adaptFn(PollUnlockResult fn) {
+    return [fn] () {return fn();};
 }
 
-std::function<MicroOcpp::PollResult<bool>()> adaptFn(unsigned int connectorId, PollBool_m fn)
-{
-    return [fn, connectorId]()
-    { return adaptScl(fn(connectorId)); };
+std::function<UnlockConnectorResult()> adaptFn(unsigned int connectorId, PollUnlockResult_m fn) {
+    return [fn, connectorId] () {return fn(connectorId);};
 }
 
 void ocpp_beginTransaction(const char *idTag)
@@ -379,12 +351,10 @@ void ocpp_addMeterValueInput_m(unsigned int connectorId, MeterValueInput *meterV
     addMeterValueInput(std::move(svs), connectorId);
 }
 
-void ocpp_setOnUnlockConnectorInOut(PollBool onUnlockConnectorInOut)
-{
+void ocpp_setOnUnlockConnectorInOut(PollUnlockResult onUnlockConnectorInOut) {
     setOnUnlockConnectorInOut(adaptFn(onUnlockConnectorInOut));
 }
-void ocpp_setOnUnlockConnectorInOut_m(unsigned int connectorId, PollBool_m onUnlockConnectorInOut)
-{
+void ocpp_setOnUnlockConnectorInOut_m(unsigned int connectorId, PollUnlockResult_m onUnlockConnectorInOut) {
     setOnUnlockConnectorInOut(adaptFn(connectorId, onUnlockConnectorInOut), connectorId);
 }
 

@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
 
 #ifndef ARDUINOOCPP_C_H
@@ -9,6 +9,7 @@
 
 #include <MicroOcpp/Core/ConfigurationOptions.h>
 #include <MicroOcpp/Model/ConnectorBase/Notification.h>
+#include <MicroOcpp/Model/ConnectorBase/UnlockConnectorResult.h>
 #include <MicroOcpp/Model/Transactions/Transaction.h>
 #include <MicroOcpp/Model/Certificates/Certificate_c.h>
 
@@ -39,10 +40,12 @@ typedef void (*OutputFloat)(float limit);
 typedef void (*OutputFloat_m)(unsigned int connectorId, float limit);
 typedef void (*OutputSmartCharging)(float power, float current, int nphases);
 typedef void (*OutputSmartCharging_m)(unsigned int connectorId, float power, float current, int nphases);
+typedef UnlockConnectorResult (*PollUnlockResult)();
+typedef UnlockConnectorResult (*PollUnlockResult_m)(unsigned int connectorId);
+// bert add
 enum OptionalBool {OptionalTrue, OptionalFalse, OptionalNone};
 typedef enum OptionalBool (*PollBool)();
 typedef enum OptionalBool (*PollBool_m)(unsigned int connectorId);
-// bert add
 typedef bool (*onFwDownInstall)(const char *location);
 typedef bool (*onUpload)(const char *location);
 
@@ -67,7 +70,7 @@ void ocpp_initialize_full(
             const char *bootNotificationCredentials, //e.g. '{"chargePointModel":"Demo Charger","chargePointVendor":"My Company Ltd."}' (refer to OCPP 1.6 Specification - Edition 2 p. 60)
             struct OCPP_FilesystemOpt fsopt, //If this library should format the flash if necessary. Find further options in ConfigurationOptions.h
             bool autoRecover, //automatically sanitize the local data store when the lib detects recurring crashes. During development, `false` is recommended
-            ocpp_certificate_store *certs); //optional. If provided, use given Cert Store, if NULL, use default (default depends on MbedTLS)
+            ocpp_cert_store *certs); //optional. If provided, use given Cert Store, if NULL, use default (default depends on MbedTLS)
 
 
 void ocpp_deinitialize();
@@ -156,8 +159,8 @@ void ocpp_setStopTxReadyInput_m(unsigned int connectorId, InputBool_m stopTxRead
 void ocpp_setTxNotificationOutput(void (*notificationOutput)(OCPP_Transaction*, enum OCPP_TxNotification));
 void ocpp_setTxNotificationOutput_m(unsigned int connectorId, void (*notificationOutput)(unsigned int, OCPP_Transaction*, enum OCPP_TxNotification));
 
-void ocpp_setOnUnlockConnectorInOut(PollBool onUnlockConnectorInOut);
-void ocpp_setOnUnlockConnectorInOut_m(unsigned int connectorId, PollBool_m onUnlockConnectorInOut);
+void ocpp_setOnUnlockConnectorInOut(PollUnlockResult onUnlockConnectorInOut);
+void ocpp_setOnUnlockConnectorInOut_m(unsigned int connectorId, PollUnlockResult_m onUnlockConnectorInOut);
 
 /*
  * Access further information about the internal state of the library

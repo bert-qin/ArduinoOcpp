@@ -1,5 +1,5 @@
 # matth-x/MicroOcpp
-# Copyright Matthias Akstaller 2019 - 2023
+# Copyright Matthias Akstaller 2019 - 2024
 # MIT License
 
 cmake_minimum_required(VERSION 3.15)
@@ -34,6 +34,7 @@ set(MO_SRC
     src/MicroOcpp/Operations/DeleteCertificate.cpp
     src/MicroOcpp/Operations/DiagnosticsStatusNotification.cpp
     src/MicroOcpp/Operations/FirmwareStatusNotification.cpp
+    src/MicroOcpp/Operations/GetBaseReport.cpp
     src/MicroOcpp/Operations/GetCompositeSchedule.cpp
     src/MicroOcpp/Operations/GetConfiguration.cpp
     src/MicroOcpp/Operations/GetDiagnostics.cpp
@@ -42,6 +43,7 @@ set(MO_SRC
     src/MicroOcpp/Operations/GetVariables.cpp
     src/MicroOcpp/Operations/Heartbeat.cpp
     src/MicroOcpp/Operations/MeterValues.cpp
+    src/MicroOcpp/Operations/NotifyReport.cpp
     src/MicroOcpp/Operations/RemoteStartTransaction.cpp
     src/MicroOcpp/Operations/RemoteStopTransaction.cpp
     src/MicroOcpp/Operations/ReserveNow.cpp
@@ -104,8 +106,6 @@ if(ESP_PLATFORM)
 
     target_compile_options(${COMPONENT_TARGET} PUBLIC
         -DMO_PLATFORM=MO_PLATFORM_ESPIDF
-        -DMO_CUSTOM_WS
-        -DMO_CUSTOM_UPDATER
         -DMO_CUSTOM_RESET
         -DMO_NUMCONNECTORS=2
         -DMO_DBG_LEVEL=MO_DL_DEBUG
@@ -127,8 +127,6 @@ target_include_directories(MicroOcpp PUBLIC
 
 target_compile_definitions(MicroOcpp PUBLIC
     MO_PLATFORM=MO_PLATFORM_UNIX
-    MO_CUSTOM_WS
-    MO_CUSTOM_UPDATER
     MO_CUSTOM_RESET
 )
 
@@ -175,8 +173,6 @@ target_compile_definitions(mo_unit_tests PUBLIC
     MO_PLATFORM=MO_PLATFORM_UNIX
     MO_NUMCONNECTORS=3
     MO_CUSTOM_TIMER
-    MO_CUSTOM_WS
-    MO_CUSTOM_UPDATER
     MO_CUSTOM_RESET
     MO_DBG_LEVEL=MO_DL_DEBUG
     MO_TRAFFIC_OUT
@@ -185,9 +181,13 @@ target_compile_definitions(mo_unit_tests PUBLIC
     MO_SendLocalListMaxLength=4
     MO_ENABLE_FILE_INDEX=1
     #MO_ENABLE_MBEDTLS=1
+    MO_ChargeProfileMaxStackLevel=2
+    MO_ChargingScheduleMaxPeriods=4
+    MO_MaxChargingProfilesInstalled=3
 )
 
 target_compile_options(mo_unit_tests PUBLIC
+    -Wall
     -O0
     -g
     --coverage

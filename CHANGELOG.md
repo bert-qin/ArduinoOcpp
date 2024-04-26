@@ -4,22 +4,44 @@
 
 ### Changed
 
+- Replace `PollResult<bool>` with enum `UnlockConnectorResult`
 - Rename master branch into main
+- Tx logic directly checks if WebSocket is offline ([#282](https://github.com/matth-x/MicroOcpp/pull/282))
 
 ### Added
 
+- File index ([#270](https://github.com/matth-x/MicroOcpp/pull/270))
+- Config `Cst_TxStartOnPowerPathClosed` to put back TxStartPoint
+- Function `bool isConnected()` in `Connection` interface ([#282](https://github.com/matth-x/MicroOcpp/pull/282))
+- Build flags for customizing memory limits of SmartCharging
 - Operation GetInstalledCertificateIds, UC M03 ([#262](https://github.com/matth-x/MicroOcpp/pull/262))
 - Operation DeleteCertificate, UC M04 ([#262](https://github.com/matth-x/MicroOcpp/pull/262))
 - Operation InstallCertificate, UC M05 ([#262](https://github.com/matth-x/MicroOcpp/pull/262))
 - `ProtocolVersion` selects v1.6 or v2.0.1 ([#247](https://github.com/matth-x/MicroOcpp/pull/247))
 - Build flag `MO_ENABLE_V201` set to 1 enables OCPP 2.0.1 features ([#247](https://github.com/matth-x/MicroOcpp/pull/247))
-    - Variables (non-persistent), UCs B05 - B06 ([#247](https://github.com/matth-x/MicroOcpp/pull/247))
+    - Variables (non-persistent), UCs B05 - B07 ([#247](https://github.com/matth-x/MicroOcpp/pull/247), [#284](https://github.com/matth-x/MicroOcpp/pull/284))
     - Transactions (preview only), UCs E01 - E12 ([#247](https://github.com/matth-x/MicroOcpp/pull/247))
     - StatusNotification compatibility ([#247](https://github.com/matth-x/MicroOcpp/pull/247))
+    - ChangeAvailability compatibility ([#285](https://github.com/matth-x/MicroOcpp/pull/285))
 
 ### Fixed
 
+- Fix defect idTag check in `endTransaction`
 - Make field localAuthorizationList in SendLocalList optional
+- Update charging profiles when flash disabled (relates to [#260](https://github.com/matth-x/MicroOcpp/pull/260))
+- Ignore UnlockConnector when handler not set
+- Reject ChargingProfile if unit not supported
+- Fix building with debug level warn and error
+- Fix transaction freeze in offline mode ([#279](https://github.com/matth-x/MicroOcpp/pull/279))
+- Fix compilation error caused by `PRId32` ([#279](https://github.com/matth-x/MicroOcpp/pull/279))
+- Don't load FW-mngt. module when no handlers set
+
+## [1.0.3] - 2024-04-06
+
+### Fixed
+
+- Fix nullptr access in endTransaction ([#275](https://github.com/matth-x/MicroOcpp/pull/275))
+- Backport: Fix building with debug level warn and error
 
 ## [1.0.2] - 2024-03-24
 

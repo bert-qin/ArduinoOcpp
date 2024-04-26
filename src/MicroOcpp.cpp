@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
 
 #include "MicroOcpp.h"
@@ -314,21 +314,12 @@ void mocpp_initialize(Connection& connection, const char *bootNotificationCreden
             new CertificateService(*context, std::move(certStoreUse))));
     }
 
-#if !defined(MO_CUSTOM_UPDATER) && !defined(MO_CUSTOM_WS)
+#if MO_PLATFORM == MO_PLATFORM_ARDUINO && !defined(MO_CUSTOM_UPDATER)
+#if defined(ESP32) || defined(ESP8266)
     model.setFirmwareService(std::unique_ptr<FirmwareService>(
-        EspWiFi::makeFirmwareService(*context))); //instantiate FW service + ESP installation routine
-#else
-    model.setFirmwareService(std::unique_ptr<FirmwareService>(
-        new FirmwareService(*context))); //only instantiate FW service
-#endif
-
-#if !defined(MO_CUSTOM_DIAGNOSTICS) && !defined(MO_CUSTOM_WS)
-    model.setDiagnosticsService(std::unique_ptr<DiagnosticsService>(
-        EspWiFi::makeDiagnosticsService(*context))); //will only return "Rejected" because client needs to implement logging
-#else
-    model.setDiagnosticsService(std::unique_ptr<DiagnosticsService>(
-        new DiagnosticsService(*context)));
-#endif
+        makeDefaultFirmwareService(*context))); //instantiate FW service + ESP installation routine
+#endif //defined(ESP32) || defined(ESP8266)
+#endif //MO_PLATFORM == MO_PLATFORM_ARDUINO && !defined(MO_CUSTOM_UPDATER)
 
 #if MO_PLATFORM == MO_PLATFORM_ARDUINO && (defined(ESP32) || defined(ESP8266))
     if (!model.getResetService()->getExecuteReset())
@@ -338,7 +329,7 @@ void mocpp_initialize(Connection& connection, const char *bootNotificationCreden
     model.getBootService()->setChargePointCredentials(bootNotificationCredentials);
 
     auto credsJson = model.getBootService()->getChargePointCredentials();
-    if (credsJson && credsJson->containsKey("firmwareVersion")) {
+    if (model.getFirmwareService() && credsJson && credsJson->containsKey("firmwareVersion")) {
         model.getFirmwareService()->setBuildNumber((*credsJson)["firmwareVersion"]);
     }
     credsJson.reset();
@@ -437,7 +428,7 @@ bool endTransaction(const char *idTag, const char *reason, unsigned int connecto
     bool res = false;
     if (isTransactionActive(connectorId) && getTransactionIdTag(connectorId)) {
         //end transaction now if either idTag is nullptr (i.e. force stop) or the idTag matches beginTransaction
-        if (!idTag || !strcmp(idTag, getTransactionIdTag())) {
+        if (!idTag || !strcmp(idTag, getTransactionIdTag(connectorId))) {
             res = endTransaction_authorized(idTag, reason, connectorId);
         } else {
             MO_DBG_INFO("endTransaction: idTag doesn't match");
@@ -524,6 +515,19 @@ bool ocppPermitsCharge(unsigned int connectorId) {
         MO_DBG_WARN("OCPP uninitialized");
         return false;
     }
+#if MO_ENABLE_V201
+    if (context->getVersion().major == 2) {
+        TransactionService::Evse *evse = nullptr;
+        if (auto txService = context->getModel().getTransactionService()) {
+            evse = txService->getEvse(connectorId);
+        }
+        if (!evse) {
+            MO_DBG_ERR("could not find EVSE");
+            return false;
+        }
+        return evse->ocppPermitsCharge();
+    }
+#endif
     auto connector = context->getModel().getConnector(connectorId);
     if (!connector) {
         MO_DBG_ERR("could not find connector");
@@ -845,7 +849,7 @@ void setTxNotificationOutput(std::function<void(MicroOcpp::Transaction*,MicroOcp
     connector->setTxNotificationOutput(notificationOutput);
 }
 
-void setOnUnlockConnectorInOut(std::function<PollResult<bool>()> onUnlockConnectorInOut, unsigned int connectorId) {
+void setOnUnlockConnectorInOut(std::function<UnlockConnectorResult()> onUnlockConnectorInOut, unsigned int connectorId) {
     if (!context) {
         MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
         return;
@@ -895,19 +899,35 @@ void setOnResetExecute(std::function<void(bool)> onResetExecute) {
     }
 }
 
-#if defined(MO_CUSTOM_UPDATER) || defined(MO_CUSTOM_WS)
 FirmwareService *getFirmwareService() {
+    if (!context) {
+        MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
+        return nullptr;
+    }
+
     auto& model = context->getModel();
+    if (!model.getFirmwareService()) {
+        model.setFirmwareService(std::unique_ptr<FirmwareService>(
+            new FirmwareService(*context)));
+    }
+
     return model.getFirmwareService();
 }
-#endif
 
-#if defined(MO_CUSTOM_DIAGNOSTICS) || defined(MO_CUSTOM_WS)
 DiagnosticsService *getDiagnosticsService() {
+    if (!context) {
+        MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
+        return nullptr;
+    }
+
     auto& model = context->getModel();
+    if (!model.getDiagnosticsService()) {
+        model.setDiagnosticsService(std::unique_ptr<DiagnosticsService>(
+            new DiagnosticsService(*context)));
+    }
+
     return model.getDiagnosticsService();
 }
-#endif
 
 Context *getOcppContext() {
     return context;
