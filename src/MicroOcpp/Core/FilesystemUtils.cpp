@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
 
 #include <MicroOcpp/Core/FilesystemAdapter.h>
@@ -134,7 +134,6 @@ bool FilesystemUtils::remove_if(std::shared_ptr<FilesystemAdapter> filesystem, s
 
     if (ret != 0) {
         MO_DBG_ERR("ftw_root: %i", ret);
-        (void)0;
     }
 
     return ret == 0;

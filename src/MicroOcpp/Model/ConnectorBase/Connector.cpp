@@ -68,7 +68,6 @@ Connector::Connector(Context& context, int connectorId)
         transaction = model.getTransactionStore()->getLatestTransaction(connectorId);
     } else {
         MO_DBG_ERR("must initialize TxStore before Connector");
-        (void)0;
     }
 }
 
@@ -112,9 +111,13 @@ ChargePointStatus Connector::getStatus() {
         } else {
             res = ChargePointStatus::Charging;
         }
-    } else if (model.getReservationService() && model.getReservationService()->getReservation(connectorId)) {
+    }
+    #if MO_ENABLE_RESERVATION
+    else if (model.getReservationService() && model.getReservationService()->getReservation(connectorId)) {
         res = ChargePointStatus::Reserved;
-    } else if ((!transaction || !transaction->isActive()) &&                 //no transaction preparation
+    }
+    #endif 
+    else if ((!transaction || !transaction->isActive()) &&                 //no transaction preparation
                (!connectorPluggedInput || !connectorPluggedInput()) &&   //no vehicle plugged
                (!occupiedInput || !occupiedInput())) {                       //occupied override clear
         res = ChargePointStatus::Available;
@@ -398,7 +401,6 @@ void Connector::loop() {
             
             if (!transaction) {
                 MO_DBG_ERR("could not begin FreeVend Tx");
-                (void)0;
             }
         }
 
@@ -574,7 +576,6 @@ std::shared_ptr<Transaction> Connector::allocateTransaction() {
 
             if (tx) {
                 MO_DBG_DEBUG("created silent transaction");
-                (void)0;
             }
         }
     }
@@ -591,12 +592,14 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
 
     MO_DBG_DEBUG("Begin transaction process (%s), prepare", idTag != nullptr ? idTag : "");
     
-    AuthorizationData *localAuth = nullptr;
+    bool localAuthFound = false;
+    const char *parentIdTag = nullptr; //locally stored parentIdTag
     bool offlineBlockedAuth = false; //if offline authorization will be blocked by local auth list entry
 
     //check local OCPP whitelist
-    if (model.getAuthorizationService()) {
-        localAuth = model.getAuthorizationService()->getLocalAuthorization(idTag);
+    #if MO_ENABLE_LOCAL_AUTH
+    if (auto authService = model.getAuthorizationService()) {
+        auto localAuth = authService->getLocalAuthorization(idTag);
 
         //check authorization status
         if (localAuth && localAuth->getAuthorizationStatus() != AuthorizationStatus::Accepted) {
@@ -611,19 +614,29 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
             offlineBlockedAuth = true;
             localAuth = nullptr;
         }
-    }
 
-    Reservation *reservation = nullptr;
+        if (localAuth) {
+            localAuthFound = true;
+            parentIdTag = localAuth->getParentIdTag();
+        }
+    }
+    #endif //MO_ENABLE_LOCAL_AUTH
+
+    int reservationId = -1;
     bool offlineBlockedResv = false; //if offline authorization will be blocked by reservation
 
     //check if blocked by reservation
+    #if MO_ENABLE_RESERVATION
     if (model.getReservationService()) {
-        const char *parentIdTag = localAuth ? localAuth->getParentIdTag() : nullptr;
 
-        reservation = model.getReservationService()->getReservation(
+        auto reservation = model.getReservationService()->getReservation(
                 connectorId,
                 idTag,
                 parentIdTag);
+
+        if (reservation) {
+            reservationId = reservation->getReservationId();
+        }
 
         if (reservation && !reservation->matches(
                     idTag,
@@ -640,11 +653,14 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
             } else {
                 //parentIdTag unkown but local authorization failed in any case
                 MO_DBG_INFO("connector %u reserved - no local auth", connectorId);
-                localAuth = nullptr;
+                localAuthFound = false;
             }
         }
     }
-    
+    #else
+    (void)parentIdTag;
+    #endif //MO_ENABLE_RESERVATION
+
     transaction = allocateTransaction();
 
     if (!transaction) {
@@ -662,11 +678,11 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
     transaction->setBeginTimestamp(model.getClock().now());
 
     //check for local preauthorization
-    if (localAuth && localPreAuthorizeBool && localPreAuthorizeBool->getBool()) {
+    if (localAuthFound && localPreAuthorizeBool && localPreAuthorizeBool->getBool()) {
         MO_DBG_DEBUG("Begin transaction process (%s), preauthorized locally", idTag != nullptr ? idTag : "");
 
-        if (reservation) {
-            transaction->setReservationId(reservation->getReservationId());
+        if (reservationId >= 0) {
+            transaction->setReservationId(reservationId);
         }
         transaction->setAuthorized();
 
@@ -696,6 +712,7 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
             return;
         }
 
+        #if MO_ENABLE_RESERVATION
         if (model.getReservationService()) {
             auto reservation = model.getReservationService()->getReservation(
                         connectorId,
@@ -718,6 +735,7 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
                 }
             }
         }
+        #endif //MO_ENABLE_RESERVATION
 
         MO_DBG_DEBUG("Authorized transaction process (%s)", tx->getIdTag());
         tx->setAuthorized();
@@ -727,14 +745,10 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
     });
 
     //capture local auth and reservation check in for timeout handler
-    bool localAuthFound = localAuth;
-    bool reservationFound = reservation;
-    int reservationId = reservation ? reservation->getReservationId() : -1;
     authorize->setOnTimeoutListener([this, tx,
                 offlineBlockedAuth, 
                 offlineBlockedResv, 
                 localAuthFound,
-                reservationFound,
                 reservationId] () {
 
         if (offlineBlockedAuth) {
@@ -757,7 +771,7 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
 
         if (localAuthFound && localAuthorizeOfflineBool && localAuthorizeOfflineBool->getBool()) {
             MO_DBG_DEBUG("Offline transaction process (%s), locally authorized", tx->getIdTag());
-            if (reservationFound) {
+            if (reservationId >= 0) {
                 tx->setReservationId(reservationId);
             }
             tx->setAuthorized();
@@ -769,7 +783,7 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
 
         if (allowOfflineTxForUnknownIdBool && allowOfflineTxForUnknownIdBool->getBool()) {
             MO_DBG_DEBUG("Offline transaction process (%s), allow unknown ID", tx->getIdTag());
-            if (reservationFound) {
+            if (reservationId >= 0) {
                 tx->setReservationId(reservationId);
             }
             tx->setAuthorized();
@@ -815,7 +829,8 @@ std::shared_ptr<Transaction> Connector::beginTransaction_authorized(const char *
     MO_DBG_DEBUG("Begin transaction process (%s), already authorized", idTag != nullptr ? idTag : "");
 
     transaction->setAuthorized();
-    
+
+    #if MO_ENABLE_RESERVATION
     if (model.getReservationService()) {
         if (auto reservation = model.getReservationService()->getReservation(connectorId, idTag, parentIdTag)) {
             if (reservation->matches(idTag, parentIdTag)) {
@@ -823,6 +838,7 @@ std::shared_ptr<Transaction> Connector::beginTransaction_authorized(const char *
             }
         }
     }
+    #endif //MO_ENABLE_RESERVATION
 
     transaction->commit();
 

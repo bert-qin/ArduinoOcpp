@@ -1,3 +1,11 @@
+// matth-x/MicroOcpp
+// Copyright Matthias Akstaller 2019 - 2024
+// MIT License
+
+#include <MicroOcpp/Version.h>
+
+#if MO_ENABLE_RESERVATION
+
 #include <MicroOcpp.h>
 #include <MicroOcpp/Core/Connection.h>
 #include "./catch2/catch.hpp"
@@ -504,3 +512,5 @@ TEST_CASE( "Reservation" ) {
 
     mocpp_deinitialize();
 }
+
+#endif //MO_ENABLE_RESERVATION

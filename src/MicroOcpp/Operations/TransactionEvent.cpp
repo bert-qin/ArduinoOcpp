@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
 
 #include <MicroOcpp/Version.h>
@@ -85,6 +85,9 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
 
     const char *triggerReason = "";
     switch(txEvent->triggerReason) {
+        case TransactionEventTriggerReason::UNDEFINED:
+            MO_DBG_ERR("internal error");
+            break;
         case TransactionEventTriggerReason::Authorized:
             triggerReason = "Authorized";
             break;
@@ -175,6 +178,9 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
 
     const char *chargingState = nullptr;
     switch (txEvent->chargingState) {
+        case TransactionEventData::ChargingState::UNDEFINED:
+            // optional, okay
+            break;
         case TransactionEventData::ChargingState::Charging:
             chargingState = "Charging";
             break;
@@ -197,6 +203,12 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
 
     const char *stoppedReason = nullptr;
     switch (txEvent->transaction->stopReason) {
+        case Transaction::StopReason::UNDEFINED:
+            // optional, okay
+            break;
+        case Transaction::StopReason::Local: 
+            // omit reason Local
+            break;
         case Transaction::StopReason::DeAuthorized: 
             stoppedReason = "DeAuthorized"; 
             break;
@@ -256,8 +268,8 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
         transactionInfo["stoppedReason"] = stoppedReason;
     }
 
-    if (txEvent->transaction->remoteStartId >= 0) {
-        payload["remoteStartId"] = txEvent->transaction->remoteStartId;
+    if (txEvent->remoteStartId >= 0) {
+        transactionInfo["remoteStartId"] = txEvent->transaction->remoteStartId;
     }
 
     if (txEvent->idToken) {

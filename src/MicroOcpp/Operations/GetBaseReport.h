@@ -20,8 +20,6 @@ class VariableService;
 
 namespace Ocpp201 {
 
-
-
 class GetBaseReport : public Operation {
 private:
     VariableService& variableService;

@@ -37,7 +37,6 @@ const char *cstrFromOcppEveState(ChargePointStatus state) {
 #endif
         default:
             MO_DBG_ERR("ChargePointStatus not specified");
-            (void)0;
             /* fall through */
         case (ChargePointStatus::NOT_SET):
             return "NOT_SET";
@@ -51,7 +50,6 @@ StatusNotification::StatusNotification(int connectorId, ChargePointStatus curren
     
     if (currentStatus != ChargePointStatus::NOT_SET) {
         MO_DBG_INFO("New status: %s (connectorId %d)", cstrFromOcppEveState(currentStatus), connectorId);
-        (void)0;
     }
 }
 
@@ -140,7 +138,7 @@ std::unique_ptr<DynamicJsonDocument> StatusNotification::createReq() {
     payload["timestamp"] = timestamp_cstr;
     payload["connectorStatus"] = cstrFromOcppEveState(currentStatus);
     payload["evseId"] = evseId.id;
-    payload["connectorId"] = evseId.connectorId >= 0 ? evseId.connectorId : 1;
+    payload["connectorId"] = evseId.id == 0 ? 0 : evseId.connectorId >= 0 ? evseId.connectorId : 1;
 
     return doc;
 }

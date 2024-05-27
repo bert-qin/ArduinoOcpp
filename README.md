@@ -14,8 +14,6 @@ OCPP 1.6 client for microcontrollers. Portable C/C++. Compatible with Espressif,
 
 Reference usage: [OpenEVSE](https://github.com/OpenEVSE/ESP32_WiFi_V4.x/blob/master/src/ocpp.cpp) | Technical introduction: [Docs](https://matth-x.github.io/MicroOcpp/intro-tech) | Website: [www.micro-ocpp.com](https://www.micro-ocpp.com)
 
-**Updated branches (2024-03-24):** the default branch was renamed from master into main. The develop branch hasn't been used anymore, so it is deleted. This better represents how branches are used in MicroOcpp: active development takes place on main (plus the feature and fixing branches) and the releases are stable versions of this library. To get a release version, checkout a tag, e.g. *v1.0.3*, or download it from GitHub / PlatformIO.
-
 ## Tester / Demo App
 
 *Main repository: [MicroOcppSimulator](https://github.com/matth-x/MicroOcppSimulator)*
@@ -71,7 +69,7 @@ If using the built-in certificate store (to enable, set build flag `MO_ENABLE_MB
 
 - [Mbed-TLS/mbedtls](https://github.com/Mbed-TLS/mbedtls) (version `2.28.1`)
 
-In case you use PlatformIO, you can copy all dependencies from `platformio.ini` into your own configuration file. Alternatively, you can install the full library with dependencies by adding `matth-x/MicroOcpp@1.0.3` in the PIO library manager.
+In case you use PlatformIO, you can copy all dependencies from `platformio.ini` into your own configuration file. Alternatively, you can install the full library with dependencies by adding `matth-x/MicroOcpp@1.1.0` in the PIO library manager.
 
 ## OCPP 2.0.1 and ISO 15118
 
@@ -80,11 +78,13 @@ The following OCPP 2.0.1 use cases are implemented:
 | UC | Description | Note |
 | :--- | :--- | :--- |
 | M03 - M05 | Certificate management | Enable Mbed-TLS to use the built-in certificate store |
-| B05 - B06 | Variables | No persistency yet |
+| B05 - B07 | Variables | |
+| B01 - B04<br>B11 - B12 | Provisioning | Ported from OCPP 1.6 |
 | E01 - E12 | Transactions | |
+| F01 - F02 | Remote Start/Stop Tx | |
 | - | Protocol negotiation | The charger can select the OCPP version at runtime |
 
-The OCPP 2.0.1 features are in an early development stage. By default, they are disabled and excluded from the build, so they have no impact on the firmware size. To enable, set the build flag `MO_ENABLE_V201=1` and initialize the library with the ProtocolVersion parameter `2.0.1`  (see [this example](https://github.com/matth-x/MicroOcppSimulator/blob/657e606c3b178d3add242935d413c72624130ff3/src/main.cpp#L43-L47) in the Simulator).
+The OCPP 2.0.1 features are in an alpha development stage (no persistency yet). By default, they are disabled and excluded from the build, so they have no impact on the firmware size. To enable, set the build flag `MO_ENABLE_V201=1` and initialize the library with the ProtocolVersion parameter `2.0.1`  (see [this example](https://github.com/matth-x/MicroOcppSimulator/blob/657e606c3b178d3add242935d413c72624130ff3/src/main.cpp#L43-L47) in the Simulator).
 
 An integration of the library for OCPP 1.6 will also be functional with the 2.0.1 upgrade. It works with the same API in MicroOcpp.h.
 

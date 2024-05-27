@@ -12,14 +12,12 @@
 
 MicroOcpp::Connection *ocppSocket = nullptr;
 
-void ocpp_initialize(OCPP_Connection *conn, const char *chargePointModel, const char *chargePointVendor, struct OCPP_FilesystemOpt fsopt, bool autoRecover)
-{
-    ocpp_initialize_full(conn, ChargerCredentials(chargePointModel, chargePointVendor), fsopt, autoRecover, NULL);
+void ocpp_initialize(OCPP_Connection *conn, const char *chargePointModel, const char *chargePointVendor, struct OCPP_FilesystemOpt fsopt, bool autoRecover) {
+    ocpp_initialize_full(conn, ChargerCredentials(chargePointModel, chargePointVendor), fsopt, autoRecover);
 }
 
-void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCredentials, struct OCPP_FilesystemOpt fsopt, bool autoRecover, ocpp_cert_store *certs) {
-    if (!conn)
-    {
+void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCredentials, struct OCPP_FilesystemOpt fsopt, bool autoRecover) {
+    if (!conn) {
         MO_DBG_ERR("conn is null");
     }
 
@@ -27,13 +25,7 @@ void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCre
 
     MicroOcpp::FilesystemOpt adaptFsopt = fsopt;
 
-    std::unique_ptr<MicroOcpp::CertificateStore> certsCwrapper;
-    if (certs)
-    {
-        certsCwrapper = MicroOcpp::makeCertificateStoreCwrapper(certs);
-    }
-
-    mocpp_initialize(*ocppSocket, bootNotificationCredentials, MicroOcpp::makeDefaultFilesystemAdapter(adaptFsopt), autoRecover, MicroOcpp::ProtocolVersion(1, 6), std::move(certsCwrapper));
+    mocpp_initialize(*ocppSocket, bootNotificationCredentials, MicroOcpp::makeDefaultFilesystemAdapter(adaptFsopt), autoRecover, MicroOcpp::ProtocolVersion(1,6));
 }
 
 void ocpp_deinitialize()
@@ -419,6 +411,26 @@ void ocpp_setOnResetExecute(void (*onResetExecute)(bool))
     setOnResetExecute([onResetExecute](bool isHard)
                       { onResetExecute(isHard); });
 }
+
+#if MO_ENABLE_CERT_MGMT
+void ocpp_setCertificateStore(ocpp_cert_store *certs) {
+    std::unique_ptr<MicroOcpp::CertificateStore> certsCwrapper;
+    if (certs) {
+        certsCwrapper = MicroOcpp::makeCertificateStoreCwrapper(certs);
+    }
+    setCertificateStore(std::move(certsCwrapper));
+}
+#endif //MO_ENABLE_CERT_MGMT
+
+#if MO_ENABLE_CERT_MGMT
+void ocpp_setCertificateStore(ocpp_cert_store *certs) {
+    std::unique_ptr<MicroOcpp::CertificateStore> certsCwrapper;
+    if (certs) {
+        certsCwrapper = MicroOcpp::makeCertificateStoreCwrapper(certs);
+    }
+    setCertificateStore(std::move(certsCwrapper));
+}
+#endif //MO_ENABLE_CERT_MGMT
 
 void ocpp_setOnReceiveRequest(const char *operationType, OnMessage onRequest)
 {

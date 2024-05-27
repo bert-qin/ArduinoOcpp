@@ -1,5 +1,5 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
 
 #include <MicroOcpp/Model/Metering/MeteringConnector.h>
@@ -59,7 +59,7 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
     if ((txBreak || meterData.size() >= (size_t) meterValueCacheSizeInt->getInt()) && !meterData.empty()) {
         auto meterValues = std::unique_ptr<MeterValues>(new MeterValues(std::move(meterData), connectorId, transaction));
         meterData.clear();
-        return std::move(meterValues);
+        return std::move(meterValues); //std::move is required for some compilers even if it's not mandated by standard C++
     }
 
     if (model.getConnector(connectorId)) {

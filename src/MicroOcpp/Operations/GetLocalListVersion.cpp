@@ -1,6 +1,10 @@
 // matth-x/MicroOcpp
-// Copyright Matthias Akstaller 2019 - 2023
+// Copyright Matthias Akstaller 2019 - 2024
 // MIT License
+
+#include <MicroOcpp/Version.h>
+
+#if MO_ENABLE_LOCAL_AUTH
 
 #include <MicroOcpp/Operations/GetLocalListVersion.h>
 #include <MicroOcpp/Model/Model.h>
@@ -31,3 +35,5 @@ std::unique_ptr<DynamicJsonDocument> GetLocalListVersion::createConf(){
     }
     return doc;
 }
+
+#endif //MO_ENABLE_LOCAL_AUTH
