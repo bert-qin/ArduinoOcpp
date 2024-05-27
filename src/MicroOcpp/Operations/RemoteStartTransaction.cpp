@@ -74,16 +74,17 @@ void RemoteStartTransaction::processReq(JsonObject payload) {
             }
         }
     } else {
-        //connectorId not specified. Find free connector
-        for (unsigned int cid = 1; cid < model.getNumConnectors(); cid++) {
-            auto connector = model.getConnector(cid);
-            if (!connector->getTransaction() &&
-                        connector->isOperative()) {
-                selectConnector = connector;
-                connectorId = cid;
-                break;
-            }
-        }
+        //hehongyang ,OCTT 027: should reject when use connector 0 
+        // //connectorId not specified. Find free connector
+        // for (unsigned int cid = 1; cid < model.getNumConnectors(); cid++) {
+        //     auto connector = model.getConnector(cid);
+        //     if (!connector->getTransaction() &&
+        //                 connector->isOperative()) {
+        //         selectConnector = connector;
+        //         connectorId = cid;
+        //         break;
+        //     }
+        // }
     }
 
     if (selectConnector) {

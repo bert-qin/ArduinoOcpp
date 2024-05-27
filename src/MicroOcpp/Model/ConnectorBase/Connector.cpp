@@ -315,6 +315,10 @@ void Connector::loop() {
                     const char* idTagInfoStatus = response["idTagInfo"]["status"] | "_Undefined";
                     if (strcmp(idTagInfoStatus, "Accepted")) {
                         updateTxNotification(TxNotification::DeAuthorized);
+                    }else{
+                        if(this->getTransaction()){
+                            this->getTransaction()->setParentIdTag(response["idTagInfo"]["parentIdTag"] | "");
+                        }
                     }
                 });
                 context.initiateRequest(std::move(startTx));
@@ -666,10 +670,10 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
         }
         transaction->setAuthorized();
 
+        transaction->commit();
         updateTxNotification(TxNotification::Authorized);
+        return transaction;
     }
-
-    transaction->commit();
 
     auto authorize = makeRequest(new Ocpp16::Authorize(context.getModel(), idTag));
     authorize->setTimeout(authorizationTimeoutInt && authorizationTimeoutInt->getInt() > 0 ? authorizationTimeoutInt->getInt() * 1000UL : 20UL * 1000UL);
@@ -826,6 +830,89 @@ std::shared_ptr<Transaction> Connector::beginTransaction_authorized(const char *
 }
 
 void Connector::endTransaction(const char *idTag, const char *reason) {
+
+    if (!transaction || !transaction->isActive()) {
+        //transaction already ended / not active anymore
+        return;
+    }
+
+    // bert add for parent idtag
+    if(idTag){
+        // idTag must be different ,check parent idTag only.
+        if(!transaction->getParentIdTag()){
+            return;
+        }
+        bool isParentIdTagMatch = false;
+        //check local OCPP whitelist
+        if (model.getAuthorizationService()) {
+            AuthorizationData *localAuth = nullptr;
+            localAuth = model.getAuthorizationService()->getLocalAuthorization(idTag);
+            
+            //check authorization status
+            if (localAuth && localAuth->getAuthorizationStatus() != AuthorizationStatus::Accepted) {
+                MO_DBG_DEBUG("local auth denied (%s)", idTag);
+                localAuth = nullptr;
+            }
+
+            //check expiry
+            if (localAuth && localAuth->getExpiryDate() && *localAuth->getExpiryDate() < model.getClock().now()) {
+                MO_DBG_DEBUG("idTag %s local auth entry expired", idTag);
+                localAuth = nullptr;
+            }
+
+            if (!strcmp(transaction->getParentIdTag(), localAuth ? localAuth->getParentIdTag() : "")) {
+                isParentIdTagMatch = true;
+            }
+
+        }
+
+        if (isParentIdTagMatch && localPreAuthorizeBool && localPreAuthorizeBool->getBool()) {
+            MO_DBG_DEBUG("End transaction process by parent idTag (%s), preauthorized locally",transaction->getParentIdTag());
+            endTransaction_authorized(idTag,reason);
+            return;
+        }
+
+        auto authorize = makeRequest(new Ocpp16::Authorize(context.getModel(), idTag));
+        authorize->setTimeout(authorizationTimeoutInt && authorizationTimeoutInt->getInt() > 0 ? authorizationTimeoutInt->getInt() * 1000UL : 20UL * 1000UL);
+
+        if (!context.getConnection().isConnected()) {
+            //WebSockt unconnected. Enter offline mode immediately
+            authorize->setTimeout(1);
+        }
+
+        auto tx = transaction;
+        if (idTag && *idTag != '\0') {
+            transaction->setStopIdTag(idTag);
+        }
+        
+        if (reason) {
+            transaction->setStopReason(reason);
+        }
+        authorize->setOnReceiveConfListener([this, tx] (JsonObject response) {
+            JsonObject idTagInfo = response["idTagInfo"];
+
+            if (strcmp("Accepted", idTagInfo["status"] | "")==0 && strcmp(tx->getParentIdTag(), idTagInfo["parentIdTag"] | "")==0) {
+                endTransaction_authorized(nullptr,nullptr);
+            }
+
+        });
+
+        //capture local authcheck in for timeout handler
+        authorize->setOnTimeoutListener([this, tx,isParentIdTagMatch] () {
+            if (isParentIdTagMatch && localAuthorizeOfflineBool && localAuthorizeOfflineBool->getBool()) {
+                MO_DBG_DEBUG("End transaction process by parent idTag (%s), Offline Authorized locally",tx->getParentIdTag());
+                endTransaction_authorized(nullptr,nullptr);
+                return;
+            }
+        });
+        context.initiateRequest(std::move(authorize));
+    }else{
+        endTransaction_authorized(idTag,reason);
+    }
+
+}
+
+void Connector::endTransaction_authorized(const char *idTag, const char *reason) {
 
     if (!transaction || !transaction->isActive()) {
         //transaction already ended / not active anymore

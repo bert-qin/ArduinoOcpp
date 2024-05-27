@@ -6,17 +6,19 @@
 #define CLEARCACHE_H
 
 #include <MicroOcpp/Core/Operation.h>
-#include <MicroOcpp/Core/FilesystemAdapter.h>
 
 namespace MicroOcpp {
+
+class AuthorizationService;
+
 namespace Ocpp16 {
 
 class ClearCache : public Operation {
 private:
-    std::shared_ptr<FilesystemAdapter> filesystem;
+    AuthorizationService& authService;
     bool success = true;
 public:
-    ClearCache(std::shared_ptr<FilesystemAdapter> filesystem);
+    ClearCache(AuthorizationService& authService);
 
     const char* getOperationType() override;
 

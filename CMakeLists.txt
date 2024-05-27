@@ -64,6 +64,7 @@ set(MO_SRC
     src/MicroOcpp/Core/OperationRegistry.cpp
     src/MicroOcpp/Model/Authorization/AuthorizationData.cpp
     src/MicroOcpp/Model/Authorization/AuthorizationList.cpp
+    src/MicroOcpp/Model/Authorization/AuthorizationCache.cpp
     src/MicroOcpp/Model/Authorization/AuthorizationService.cpp
     src/MicroOcpp/Model/Authorization/IdToken.cpp
     src/MicroOcpp/Model/Boot/BootService.cpp

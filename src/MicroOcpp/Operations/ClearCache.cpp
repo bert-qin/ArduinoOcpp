@@ -3,12 +3,12 @@
 // MIT License
 
 #include <MicroOcpp/Operations/ClearCache.h>
-#include <MicroOcpp/Core/FilesystemUtils.h>
+#include <MicroOcpp/Model/Authorization/AuthorizationService.h>
 #include <MicroOcpp/Debug.h>
 
 using MicroOcpp::Ocpp16::ClearCache;
 
-ClearCache::ClearCache(std::shared_ptr<FilesystemAdapter> filesystem) : filesystem(filesystem) {
+ClearCache::ClearCache(AuthorizationService& authService) : authService(authService){
   
 }
 
@@ -17,18 +17,18 @@ const char* ClearCache::getOperationType(){
 }
 
 void ClearCache::processReq(JsonObject payload) {
-    MO_DBG_WARN("Clear transaction log (Authorization Cache not supported)");
 
-    if (!filesystem) {
-        //no persistency - nothing to do
-        return;
-    }
+    // if (!filesystem) {
+    //     //no persistency - nothing to do
+    //     return;
+    // }
 
-    success = FilesystemUtils::remove_if(filesystem, [] (const char *fname) -> bool {
-        return !strncmp(fname, "sd", strlen("sd")) ||
-               !strncmp(fname, "tx", strlen("tx")) ||
-               !strncmp(fname, "op", strlen("op"));
-    });
+    // success = FilesystemUtils::remove_if(filesystem, [] (const char *fname) -> bool {
+    //     return !strncmp(fname, "sd", strlen("sd")) ||
+    //            !strncmp(fname, "tx", strlen("tx")) ||
+    //            !strncmp(fname, "op", strlen("op"));
+    // });
+    success = authService.clearAutchCache();
 }
 
 std::unique_ptr<DynamicJsonDocument> ClearCache::createConf(){

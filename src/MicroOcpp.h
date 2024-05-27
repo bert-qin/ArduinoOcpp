@@ -20,6 +20,8 @@
 #include <MicroOcpp/Model/ConnectorBase/UnlockConnectorResult.h>
 #include <MicroOcpp/Version.h>
 #include <MicroOcpp/Model/Certificates/Certificate.h>
+#include <MicroOcpp/Model/FirmwareManagement/FirmwareService.h>
+#include <MicroOcpp/Model/Diagnostics/DiagnosticsService.h>
 
 using MicroOcpp::OnReceiveConfListener;
 using MicroOcpp::OnReceiveReqListener;

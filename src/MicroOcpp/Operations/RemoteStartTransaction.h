@@ -7,6 +7,7 @@
 
 #include <MicroOcpp/Core/Operation.h>
 #include <MicroOcpp/Operations/CiStrings.h>
+#include <MicroOcpp/Core/Configuration.h>
 
 namespace MicroOcpp {
 

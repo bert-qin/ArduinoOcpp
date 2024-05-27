@@ -42,7 +42,8 @@ void TriggerMessage::processReq(JsonObject payload) {
                 context.initiatePreBootOperation(mService->takeTriggeredMeterValues(connectorId));
                 statusMessage = "Accepted";
             } else {
-                errorCode = "PropertyConstraintViolation";
+                //hehongyang, OCTT test case 055 need reject
+                //errorCode = "PropertyConstraintViolation";
             }
         }
     } else if (!strcmp(requestedMessage, "StatusNotification")) {

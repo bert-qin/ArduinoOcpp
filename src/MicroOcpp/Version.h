@@ -10,6 +10,9 @@
  */
 #define MO_VERSION "1.1.0"
 
+// Only for unix
+#undef major
+#undef minor
 /*
  * Enable OCPP 2.0.1 support. If enabled, library can be initialized with both v1.6 and v2.0.1. The choice
  * of the protocol is done dynamically during initialization

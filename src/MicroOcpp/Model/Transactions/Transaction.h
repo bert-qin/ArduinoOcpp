@@ -52,6 +52,7 @@ private:
     /*
      * Attributes of StartTransaction
      */
+    char parentIdTag [IDTAG_LEN_MAX + 1] = {'\0'};
     SendStatus start_sync;
     int32_t start_meter = -1;           //meterStart of StartTx
     Timestamp start_timestamp = MIN_TIME;      //timestamp of StartTx; can be set before actually initiating
@@ -124,6 +125,9 @@ public:
     int getTxProfileId() {return txProfileId;}
 
     SendStatus& getStartSync() {return start_sync;}
+
+    bool setParentIdTag(const char *idTag);
+    const char *getParentIdTag() {return parentIdTag;}
 
     void setMeterStart(int32_t meter) {start_meter = meter;}
     bool isMeterStartDefined() {return start_meter >= 0;}

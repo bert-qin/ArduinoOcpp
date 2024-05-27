@@ -18,7 +18,8 @@ void ocpp_initialize(OCPP_Connection *conn, const char *chargePointModel, const 
 }
 
 void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCredentials, struct OCPP_FilesystemOpt fsopt, bool autoRecover, ocpp_cert_store *certs) {
-    if (!conn) {
+    if (!conn)
+    {
         MO_DBG_ERR("conn is null");
     }
 
@@ -49,7 +50,9 @@ void ocpp_loop()
  * Helper functions for transforming callback functions from C-style to C++style
  */
 
-std::function<bool()> adaptFn(InputBool fn) {
+
+std::function<bool()> adaptFn(InputBool fn)
+{
     return fn;
 }
 

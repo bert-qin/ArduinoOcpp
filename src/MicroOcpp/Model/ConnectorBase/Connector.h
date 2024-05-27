@@ -97,6 +97,7 @@ public:
      * is safe to call this function at any time even if no transaction is running
      */
     void endTransaction(const char *idTag = nullptr, const char *reason = nullptr);
+    void endTransaction_authorized(const char *idTag = nullptr, const char *reason = nullptr);
     
     std::shared_ptr<Transaction>& getTransaction();
 

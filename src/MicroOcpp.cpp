@@ -432,7 +432,13 @@ bool endTransaction(const char *idTag, const char *reason, unsigned int connecto
             res = endTransaction_authorized(idTag, reason, connectorId);
         } else {
             MO_DBG_INFO("endTransaction: idTag doesn't match");
-            (void)0;
+            // (void)0;
+            auto connector = context->getModel().getConnector(connectorId);
+            if (!connector) {
+                MO_DBG_ERR("could not find connector");
+                return false;
+            }
+            connector->endTransaction(idTag, reason);
         }
     }
     return res;
@@ -449,7 +455,7 @@ bool endTransaction_authorized(const char *idTag, const char *reason, unsigned i
         return false;
     }
     auto res = isTransactionActive(connectorId);
-    connector->endTransaction(idTag, reason);
+    connector->endTransaction_authorized(idTag, reason);
     return res;
 }
 
