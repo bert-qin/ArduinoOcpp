@@ -13,10 +13,11 @@
 MicroOcpp::Connection *ocppSocket = nullptr;
 
 void ocpp_initialize(OCPP_Connection *conn, const char *chargePointModel, const char *chargePointVendor, struct OCPP_FilesystemOpt fsopt, bool autoRecover) {
-    ocpp_initialize_full(conn, ChargerCredentials(chargePointModel, chargePointVendor), fsopt, autoRecover);
+    ProtocolVersionC ver = {1,6,0};
+    ocpp_initialize_full(conn, ChargerCredentials(chargePointModel, chargePointVendor), fsopt, autoRecover,&ver);
 }
 
-void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCredentials, struct OCPP_FilesystemOpt fsopt, bool autoRecover) {
+void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCredentials, struct OCPP_FilesystemOpt fsopt, bool autoRecover,ProtocolVersionC *version) {
     if (!conn) {
         MO_DBG_ERR("conn is null");
     }
@@ -24,8 +25,9 @@ void ocpp_initialize_full(OCPP_Connection *conn, const char *bootNotificationCre
     ocppSocket = reinterpret_cast<MicroOcpp::Connection *>(conn);
 
     MicroOcpp::FilesystemOpt adaptFsopt = fsopt;
-
-    mocpp_initialize(*ocppSocket, bootNotificationCredentials, MicroOcpp::makeDefaultFilesystemAdapter(adaptFsopt), autoRecover, MicroOcpp::ProtocolVersion(1,6));
+    auto protocolVer = MicroOcpp::ProtocolVersion(version->major,version->minor,version->patch);
+    MO_DBG_INFO("ocpp version:%d.%d.%d",protocolVer.major,protocolVer.minor,protocolVer.patch);
+    mocpp_initialize(*ocppSocket, bootNotificationCredentials, MicroOcpp::makeDefaultFilesystemAdapter(adaptFsopt), autoRecover, protocolVer);
 }
 
 void ocpp_deinitialize()
@@ -411,16 +413,6 @@ void ocpp_setOnResetExecute(void (*onResetExecute)(bool))
     setOnResetExecute([onResetExecute](bool isHard)
                       { onResetExecute(isHard); });
 }
-
-#if MO_ENABLE_CERT_MGMT
-void ocpp_setCertificateStore(ocpp_cert_store *certs) {
-    std::unique_ptr<MicroOcpp::CertificateStore> certsCwrapper;
-    if (certs) {
-        certsCwrapper = MicroOcpp::makeCertificateStoreCwrapper(certs);
-    }
-    setCertificateStore(std::move(certsCwrapper));
-}
-#endif //MO_ENABLE_CERT_MGMT
 
 #if MO_ENABLE_CERT_MGMT
 void ocpp_setCertificateStore(ocpp_cert_store *certs) {

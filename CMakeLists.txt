@@ -113,10 +113,10 @@ if(ESP_PLATFORM)
 
     target_compile_options(${COMPONENT_TARGET} PUBLIC
         -DMO_PLATFORM=MO_PLATFORM_ESPIDF
-        -DMO_CUSTOM_RESET
         -DMO_NUMCONNECTORS=2
         -DMO_DBG_LEVEL=MO_DL_DEBUG
         -DMO_TRAFFIC_OUT
+        -DMO_ENABLE_V201=1
         )
 
     return()

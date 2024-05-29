@@ -49,6 +49,12 @@ typedef enum OptionalBool (*PollBool_m)(unsigned int connectorId);
 typedef bool (*onFwDownInstall)(const char *location);
 typedef bool (*onUpload)(const char *location);
 
+typedef struct{
+    int major;
+    int minor;
+    int patch;
+}ProtocolVersionC;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -69,7 +75,8 @@ void ocpp_initialize_full(
             OCPP_Connection *conn,  //WebSocket adapter for MicroOcpp
             const char *bootNotificationCredentials, //e.g. '{"chargePointModel":"Demo Charger","chargePointVendor":"My Company Ltd."}' (refer to OCPP 1.6 Specification - Edition 2 p. 60)
             struct OCPP_FilesystemOpt fsopt, //If this library should format the flash if necessary. Find further options in ConfigurationOptions.h
-            bool autoRecover); //automatically sanitize the local data store when the lib detects recurring crashes. During development, `false` is recommended
+            bool autoRecover,//automatically sanitize the local data store when the lib detects recurring crashes. During development, `false` is recommended
+            ProtocolVersionC *version);
 
 void ocpp_deinitialize();
 
