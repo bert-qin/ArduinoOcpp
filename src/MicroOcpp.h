@@ -17,6 +17,7 @@
 #include <MicroOcpp/Model/Transactions/Transaction.h>
 #include <MicroOcpp/Model/ConnectorBase/Notification.h>
 #include <MicroOcpp/Model/ConnectorBase/ChargePointErrorData.h>
+#include <MicroOcpp/Model/ConnectorBase/ChargePointStatus.h>
 #include <MicroOcpp/Model/ConnectorBase/UnlockConnectorResult.h>
 #include <MicroOcpp/Version.h>
 #include <MicroOcpp/Model/Certificates/Certificate.h>
@@ -247,6 +248,11 @@ std::shared_ptr<MicroOcpp::Transaction>& getTransaction(unsigned int connectorId
 bool ocppPermitsCharge(unsigned int connectorId = 1);
 
 /*
+ * Returns the latest ChargePointStatus as reported via StatusNotification (standard OCPP data type)
+ */
+ChargePointStatus getChargePointStatus(unsigned int connectorId = 1);
+
+/*
  * Define the Inputs and Outputs of this library.
  * 
  * This library interacts with the hardware of your charger by Inputs and Outputs. Inputs and Outputs
@@ -272,8 +278,10 @@ void setEnergyMeterInput(std::function<int()> energyInput, unsigned int connecto
 
 void setPowerMeterInput(std::function<float()> powerInput, unsigned int connectorId = 1); //Input of the power meter reading in W
 
-//Smart Charging Output, alternative for Watts only, Current only, or Watts x Current x numberPhases. Only one
-//of them can be set at a time
+//Smart Charging Output, alternative for Watts only, Current only, or Watts x Current x numberPhases.
+//Only one of the Smart Charging Outputs can be set at a time.
+//MO will execute the callback whenever the OCPP charging limit changes and will pass the limit for now
+//to the callback. If OCPP does not define a limit, then MO passes the value -1 for "undefined".
 void setSmartChargingPowerOutput(std::function<void(float)> chargingLimitOutput, unsigned int connectorId = 1); //Output (in Watts) for the Smart Charging limit
 void setSmartChargingCurrentOutput(std::function<void(float)> chargingLimitOutput, unsigned int connectorId = 1); //Output (in Amps) for the Smart Charging limit
 void setSmartChargingOutput(std::function<void(float,float,int)> chargingLimitOutput, unsigned int connectorId = 1); //Output (in Watts, Amps, numberPhases) for the Smart Charging limit

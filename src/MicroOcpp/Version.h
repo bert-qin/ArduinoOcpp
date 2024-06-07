@@ -8,7 +8,7 @@
 /*
  * Version specification of MicroOcpp library (not related with the OCPP version)
  */
-#define MO_VERSION "1.1.0"
+#define MO_VERSION "1.2.0"
 
 // Only for unix
 #undef major
