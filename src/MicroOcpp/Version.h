@@ -33,7 +33,11 @@ struct ProtocolVersion {
     ProtocolVersion(int major = 1, int minor = 6, int patch = 0) : major(major), minor(minor), patch(patch) { }
 };
 
+const ProtocolVersion VER_1_6_J(1,6,0);
+const ProtocolVersion VER_2_0_1(2,0,1);
+
 }
+
 
 #endif //__cplusplus
 

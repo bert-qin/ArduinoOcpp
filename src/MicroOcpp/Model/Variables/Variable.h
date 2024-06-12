@@ -19,6 +19,7 @@
 #include <limits>
 
 #include <MicroOcpp/Model/ConnectorBase/EvseId.h>
+#include <MicroOcpp/Core/ConfigurationKeyValue.h>
 
 #ifndef MO_VARIABLE_TYPECHECK
 #define MO_VARIABLE_TYPECHECK 1
@@ -125,7 +126,7 @@ struct ComponentId {
  * the value of the variable. To make it use the host system's key-value store, extend this class
  * with a custom implementation of the virtual methods and pass its instances to MO.
  */
-class Variable {
+class Variable  : public ICfg {
 public:
     //AttributeEnumType (3.2)
     enum class AttributeType : uint8_t {
@@ -198,7 +199,9 @@ public:
     // get Value of Variable
     virtual int getInt(AttributeType attrType = AttributeType::Actual);
     virtual bool getBool(AttributeType attrType = AttributeType::Actual);
-    virtual const char *getString(AttributeType attrType = AttributeType::Actual); //always returns c-string (empty if undefined)
+    virtual const char *getString(AttributeType attrType); //always returns c-string (empty if undefined)
+    virtual const char *getString() override;
+    revision_t getValueRevision() override;
 
     virtual InternalDataType getInternalDataType() = 0; //corresponds to MO internal value representation
     bool hasAttribute(AttributeType attrType);

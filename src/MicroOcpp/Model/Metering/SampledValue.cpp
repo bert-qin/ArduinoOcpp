@@ -89,13 +89,13 @@ ReadingContext deserializeReadingContext(const char *context) {
 }
 }} //end namespaces
 
-std::unique_ptr<DynamicJsonDocument> SampledValue::toJson() {
+std::unique_ptr<DynamicJsonDocument> SampledValue::toJson(const ProtocolVersion& version) {
     auto value = serializeValue();
     if (value.empty()) {
         return nullptr;
     }
     size_t capacity = 0;
-    capacity += JSON_OBJECT_SIZE(8);
+    capacity += JSON_OBJECT_SIZE(9);
     capacity += value.length() + 1
                 + properties.getFormat().length() + 1
                 + properties.getMeasurand().length() + 1
@@ -104,7 +104,16 @@ std::unique_ptr<DynamicJsonDocument> SampledValue::toJson() {
                 + properties.getUnit().length() + 1;
     auto result = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(capacity + 100)); //TODO remove safety space
     auto payload = result->to<JsonObject>();
-    payload["value"] = value;
+#if MO_ENABLE_V201
+    if(version.major==2)
+    {
+        payload["value"] = std::stod(value);
+    }
+    else
+#endif
+    {
+        payload["value"] = value;
+    }
     auto context_cstr = Ocpp16::serializeReadingContext(context);
     if (context_cstr)
         payload["context"] = context_cstr;
@@ -117,7 +126,16 @@ std::unique_ptr<DynamicJsonDocument> SampledValue::toJson() {
     if (!properties.getLocation().empty())
         payload["location"] = properties.getLocation();
     if (!properties.getUnit().empty())
+#if MO_ENABLE_V201
+    if(version.major==2)
+    {
+        payload["unitOfMeasure"]["unit"] = properties.getUnit();
+    }
+    else
+#endif
+    {
         payload["unit"] = properties.getUnit();
+    }
     return result;
 }
 

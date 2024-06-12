@@ -31,7 +31,14 @@ enum class TConfig : uint8_t {
 template<class T>
 TConfig convertType();
 
-class Configuration {
+class ICfg{
+public:
+    virtual ~ICfg()=default;
+    virtual const char *getString()=0;
+    virtual revision_t getValueRevision()=0;
+};
+
+class Configuration : public ICfg{
 protected:
     revision_t value_revision = 0; //write access counter; used to check if this config has been changed
 private:
@@ -49,11 +56,11 @@ public:
 
     virtual int getInt();
     virtual bool getBool();
-    virtual const char *getString(); //always returns c-string (empty if undefined)
+    virtual const char *getString() override; //always returns c-string (empty if undefined)
 
     virtual TConfig getType() = 0;
 
-    virtual revision_t getValueRevision();
+    virtual revision_t getValueRevision() override;
 
     void setRebootRequired();
     bool isRebootRequired();

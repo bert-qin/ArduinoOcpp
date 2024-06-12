@@ -10,6 +10,7 @@
 #include <MicroOcpp/Operations/MeterValues.h>
 #include <MicroOcpp/Platform.h>
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Model/Transactions/TransactionService.h>
 
 #include <cstddef>
 #include <cinttypes>
@@ -44,45 +45,64 @@ MeteringConnector::MeteringConnector(Model& model, int connectorId, MeterStore& 
 }
 
 std::unique_ptr<Operation> MeteringConnector::loop() {
-
     bool txBreak = false;
-    if (model.getConnector(connectorId)) {
-        auto &curTx = model.getConnector(connectorId)->getTransaction();
-        txBreak = (curTx && curTx->isRunning()) != trackTxRunning;
-        trackTxRunning = (curTx && curTx->isRunning());
+    std::shared_ptr<ITransaction> curTx = nullptr;
+#if MO_ENABLE_V201    
+    if(model.getVersion().major == 2){
+        if(model.getTransactionService() && model.getTransactionService()->getEvse(connectorId))
+        curTx = model.getTransactionService()->getEvse(connectorId)->getTransaction();
     }
+    else
+#endif
+    {
+        if(model.getConnector(connectorId)){
+            curTx = model.getConnector(connectorId)->getTransaction();
+        }
+    }
+
+    txBreak = (curTx && curTx->isRunning()) != trackTxRunning;
+    trackTxRunning = (curTx && curTx->isRunning());
 
     if (txBreak) {
         lastSampleTime = mocpp_tick_ms();
     }
 
     if ((txBreak || meterData.size() >= (size_t) meterValueCacheSizeInt->getInt()) && !meterData.empty()) {
-        auto meterValues = std::unique_ptr<MeterValues>(new MeterValues(std::move(meterData), connectorId, transaction));
-        meterData.clear();
-        return std::move(meterValues); //std::move is required for some compilers even if it's not mandated by standard C++
+#if MO_ENABLE_V201
+        if(model.getVersion().major==2 && curTx && curTx->isRunning()){
+            std::shared_ptr<Ocpp201::Transaction> curTx201 = std::dynamic_pointer_cast<Ocpp201::Transaction>(curTx);
+            curTx201->sendMeterValue(std::move(meterData));
+            meterData.clear();
+            return nullptr;
+        }else
+#endif
+        {
+            auto meterValues = std::unique_ptr<MeterValues>(new MeterValues(std::move(meterData), connectorId, transaction));
+            meterData.clear();
+            return std::move(meterValues); //std::move is required for some compilers even if it's not mandated by standard C++
+
+        }
     }
 
-    if (model.getConnector(connectorId)) {
-        if (transaction != model.getConnector(connectorId)->getTransaction()) {
-            transaction = model.getConnector(connectorId)->getTransaction();
+    if (transaction != curTx) {
+        transaction = curTx;
+    }
+    
+    if (transaction && transaction->isRunning() && !transaction->isSilent()) {
+        //check during transaction
+
+        if (!stopTxnData || stopTxnData->getTxNr() != transaction->getTxNr()) {
+            MO_DBG_WARN("reload stopTxnData");
+            //reload (e.g. after power cut during transaction)
+            stopTxnData = meterStore.getTxMeterData(*stopTxnSampledDataBuilder, transaction.get());
         }
-        
-        if (transaction && transaction->isRunning() && !transaction->isSilent()) {
-            //check during transaction
+    } else {
+        //check outside of transaction
 
-            if (!stopTxnData || stopTxnData->getTxNr() != transaction->getTxNr()) {
-                MO_DBG_WARN("reload stopTxnData");
-                //reload (e.g. after power cut during transaction)
-                stopTxnData = meterStore.getTxMeterData(*stopTxnSampledDataBuilder, transaction.get());
-            }
-        } else {
-            //check outside of transaction
-
-            if (connectorId != 0 && meterValuesInTxOnlyBool->getBool()) {
-                //don't take any MeterValues outside of transactions on connectorIds other than 0
-                meterData.clear();
-                return nullptr;
-            }
+        if (connectorId != 0 && meterValuesInTxOnlyBool->getBool()) {
+            //don't take any MeterValues outside of transactions on connectorIds other than 0
+            meterData.clear();
+            return nullptr;
         }
     }
 
@@ -188,7 +208,7 @@ std::unique_ptr<SampledValue> MeteringConnector::readTxEnergyMeter(ReadingContex
     }
 }
 
-void MeteringConnector::beginTxMeterData(Transaction *transaction) {
+void MeteringConnector::beginTxMeterData(ITransaction *transaction) {
     if (!stopTxnData || stopTxnData->getTxNr() != transaction->getTxNr()) {
         stopTxnData = meterStore.getTxMeterData(*stopTxnSampledDataBuilder, transaction);
     }
@@ -201,7 +221,7 @@ void MeteringConnector::beginTxMeterData(Transaction *transaction) {
     }
 }
 
-std::shared_ptr<TransactionMeterData> MeteringConnector::endTxMeterData(Transaction *transaction) {
+std::shared_ptr<TransactionMeterData> MeteringConnector::endTxMeterData(ITransaction *transaction) {
     if (!stopTxnData || stopTxnData->getTxNr() != transaction->getTxNr()) {
         stopTxnData = meterStore.getTxMeterData(*stopTxnSampledDataBuilder, transaction);
     }
@@ -216,7 +236,7 @@ std::shared_ptr<TransactionMeterData> MeteringConnector::endTxMeterData(Transact
     return std::move(stopTxnData);
 }
 
-std::shared_ptr<TransactionMeterData> MeteringConnector::getStopTxMeterData(Transaction *transaction) {
+std::shared_ptr<TransactionMeterData> MeteringConnector::getStopTxMeterData(ITransaction *transaction) {
     auto txData = meterStore.getTxMeterData(*stopTxnSampledDataBuilder, transaction);
 
     if (!txData) {

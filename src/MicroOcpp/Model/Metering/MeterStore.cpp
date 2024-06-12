@@ -153,7 +153,7 @@ MeterStore::MeterStore(std::shared_ptr<FilesystemAdapter> filesystem) : filesyst
     }
 }
 
-std::shared_ptr<TransactionMeterData> MeterStore::getTxMeterData(MeterValueBuilder& mvBuilder, Transaction *transaction) {
+std::shared_ptr<TransactionMeterData> MeterStore::getTxMeterData(MeterValueBuilder& mvBuilder, ITransaction *transaction) {
     if (!transaction || transaction->isSilent()) {
         //no tx assignment -> don't store txData
         //tx is silent -> no StopTx will be sent and don't store txData

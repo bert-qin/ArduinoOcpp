@@ -60,8 +60,8 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
                 JSONDATE_LENGTH + 1 + //timestamp string
                 JSON_OBJECT_SIZE(5) + //transactionInfo
                     MO_TXID_LEN_MAX + 1 + //transactionId
-                MO_IDTOKEN_LEN_MAX + 1)); //idToken
-                //meterValue not supported
+                MO_IDTOKEN_LEN_MAX + 1 //idToken
+                + 512));//meterValue // todo
     JsonObject payload = doc->to<JsonObject>();
 
     const char *eventType = "";
@@ -286,7 +286,21 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
         }
     }
 
-    // meterValue not supported
+    if(txEvent->meterValue.size()){
+        std::vector<std::unique_ptr<DynamicJsonDocument>> entries;
+        for (auto value = txEvent->meterValue.begin(); value != txEvent->meterValue.end(); value++) {
+            auto entry = (*value)->toJson(VER_2_0_1);
+            if (entry) {
+                entries.push_back(std::move(entry));
+            } else {
+                MO_DBG_ERR("Energy meter reading not convertible to JSON");
+            }
+        }
+        auto meterValueJson = payload.createNestedArray("meterValue");
+        for (auto entry = entries.begin(); entry != entries.end(); entry++) {
+            meterValueJson.add(**entry);
+        }
+    }
 
     return doc;
 }

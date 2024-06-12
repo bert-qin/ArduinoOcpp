@@ -8,11 +8,11 @@
 
 using namespace MicroOcpp;
 
-std::unique_ptr<DynamicJsonDocument> MeterValue::toJson() {
+std::unique_ptr<DynamicJsonDocument> MeterValue::toJson(const ProtocolVersion& version) {
     size_t capacity = 0;
     std::vector<std::unique_ptr<DynamicJsonDocument>> entries;
     for (auto sample = sampledValue.begin(); sample != sampledValue.end(); sample++) {
-        auto json = (*sample)->toJson();
+        auto json = (*sample)->toJson(version);
         if (!json) {
             return nullptr;
         }
@@ -57,7 +57,7 @@ ReadingContext MeterValue::getReadingContext() {
 }
 
 MeterValueBuilder::MeterValueBuilder(const std::vector<std::unique_ptr<SampledValueSampler>> &samplers,
-            std::shared_ptr<Configuration> samplersSelectStr) :
+            std::shared_ptr<ICfg> samplersSelectStr) :
             samplers(samplers),
             selectString(samplersSelectStr) {
         

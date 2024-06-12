@@ -24,7 +24,7 @@ public:
 
     void addSampledValue(std::unique_ptr<SampledValue> sample) {sampledValue.push_back(std::move(sample));}
 
-    std::unique_ptr<DynamicJsonDocument> toJson();
+    std::unique_ptr<DynamicJsonDocument> toJson(const ProtocolVersion& version=VER_1_6_J);
 
     const Timestamp& getTimestamp();
     void setTimestamp(Timestamp timestamp);
@@ -35,7 +35,7 @@ public:
 class MeterValueBuilder {
 private:
     const std::vector<std::unique_ptr<SampledValueSampler>> &samplers;
-    std::shared_ptr<Configuration> selectString;
+    std::shared_ptr<ICfg> selectString;
     std::vector<bool> select_mask;
     unsigned int select_n {0};
     decltype(selectString->getValueRevision()) select_observe;
@@ -43,7 +43,7 @@ private:
     void updateObservedSamplers();
 public:
     MeterValueBuilder(const std::vector<std::unique_ptr<SampledValueSampler>> &samplers,
-            std::shared_ptr<Configuration> samplersSelectStr);
+            std::shared_ptr<ICfg> samplersSelectStr);
     
     std::unique_ptr<MeterValue> takeSample(const Timestamp& timestamp, const ReadingContext& context);
 

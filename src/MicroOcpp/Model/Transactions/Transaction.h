@@ -9,6 +9,7 @@
 
 #include <MicroOcpp/Core/Time.h>
 #include <MicroOcpp/Operations/CiStrings.h>
+#include <MicroOcpp/Model/Metering/MeterValue.h>
 
 namespace MicroOcpp {
 
@@ -33,7 +34,17 @@ public:
     bool isConfirmed() {return confirmed;}
 };
 
-class Transaction {
+class ITransaction{
+public:
+    virtual ~ITransaction()=default;
+    virtual bool isRunning()=0;
+    virtual bool isSilent()=0;
+    virtual unsigned int getConnectorId()=0;
+    virtual unsigned int getTxNr()=0;
+    virtual int getTransactionId()=0;
+};
+
+class Transaction : public ITransaction{
 private:
     ConnectorTransactionStore& context;
 
@@ -94,7 +105,7 @@ public:
     /*
      * Transaction life cycle
      */
-    bool isRunning() {return start_sync.isRequested() && !stop_sync.isRequested();} //tx is running
+    bool isRunning() override {return start_sync.isRequested() && !stop_sync.isRequested();} //tx is running
     bool isActive() {return active;} //tx continues to run or is preparing
     bool isAborted() {return !start_sync.isRequested() && !active;} //tx ended before startTx was sent
     bool isCompleted() {return stop_sync.isConfirmed();} //tx ended and startTx and stopTx have been confirmed by server
@@ -160,13 +171,13 @@ public:
     const char *getStopReason() {return stop_reason;}
 
     void setConnectorId(unsigned int connectorId) {this->connectorId = connectorId;}
-    unsigned int getConnectorId() {return connectorId;}
+    unsigned int getConnectorId() override {return connectorId;}
 
     void setTxNr(unsigned int txNr) {this->txNr = txNr;}
-    unsigned int getTxNr() {return txNr;} //internal primary key of this tx object
+    unsigned int getTxNr() override{return txNr;} //internal primary key of this tx object
 
     void setSilent() {silent = true;}
-    bool isSilent() {return silent;} //no data will be sent to server and server will not assign transactionId
+    bool isSilent() override {return silent;} //no data will be sent to server and server will not assign transactionId
 };
 
 } // namespace MicroOcpp
@@ -210,7 +221,7 @@ enum class TransactionEventTriggerReason : uint8_t {
     ResetCommand
 };
 
-class Transaction {
+class Transaction  : public ITransaction{
 public:
 
     // ReasonEnumType (3.67)
@@ -274,12 +285,34 @@ public:
     bool notifyReservationId = false;
     bool notifyChargingState = false;
     bool notifyRemoteStartId = false;
+    bool notifyMeterValue = false;
 
     bool evConnectionTimeoutListen = true;
 
     StopReason stopReason = StopReason::UNDEFINED;
     TransactionEventTriggerReason stopTrigger = TransactionEventTriggerReason::UNDEFINED;
     std::unique_ptr<IdToken> stopIdToken; // if null, then stopIdToken equals idToken
+    bool silent = false; //silent Tx: process tx locally, without reporting to the server
+    unsigned int connectorId = 0; // evse id
+    unsigned int txNr = 0; //client-side key of this tx object (!= transactionId)
+    std::vector<std::unique_ptr<MeterValue>> clockMeterValue;
+    std::vector<std::unique_ptr<MeterValue>> periodicMeterValue;
+    bool isRunning() override {return started && !stopped;} //tx is running
+    bool isSilent() override {return silent;} //no data will be sent to server and server will not assign transactionId
+    unsigned int getConnectorId() override {return connectorId;}
+    unsigned int getTxNr() override{return txNr;} //internal primary key of this tx object
+    int getTransactionId() {return 0;}
+    void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue){
+        for(auto& i : meterValue){
+            if(i->getReadingContext()==ReadingContext::SampleClock){
+                clockMeterValue.push_back(std::move(i));
+            }else if(i->getReadingContext()==ReadingContext::SamplePeriodic){
+                periodicMeterValue.push_back(std::move(i));
+            }else{
+                // do nothing
+            }
+        }
+    };
 };
 
 // TransactionEventRequest (1.60.1)
@@ -320,7 +353,7 @@ public:
     //int timeSpentCharging = 0; // not supported
     std::unique_ptr<IdToken> idToken;
     EvseId evse = -1;
-    //meterValue not supported
+    std::vector<std::unique_ptr<MeterValue>> meterValue;
 
     TransactionEventData(std::shared_ptr<Transaction> transaction, unsigned int seqNo) : transaction(transaction), seqNo(seqNo) { }
 };

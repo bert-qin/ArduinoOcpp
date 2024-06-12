@@ -13,7 +13,7 @@
 namespace MicroOcpp {
 
 class MeterValue;
-class Transaction;
+class ITransaction;
 
 namespace Ocpp16 {
 
@@ -23,10 +23,10 @@ private:
 
     unsigned int connectorId = 0;
 
-    std::shared_ptr<Transaction> transaction;
+    std::shared_ptr<ITransaction> transaction;
 
 public:
-    MeterValues(std::vector<std::unique_ptr<MeterValue>>&& meterValue, unsigned int connectorId, std::shared_ptr<Transaction> transaction = nullptr);
+    MeterValues(std::vector<std::unique_ptr<MeterValue>>&& meterValue, unsigned int connectorId, std::shared_ptr<ITransaction> transaction = nullptr);
 
     MeterValues(); //for debugging only. Make this for the server pendant
 

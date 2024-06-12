@@ -244,6 +244,7 @@ void TransactionService::Evse::loop() {
         chargingState = TransactionEventData::ChargingState::Charging;
     }
 
+    std::vector<std::unique_ptr<MeterValue>>* meterValue = nullptr;
     if (transaction) {
         // update tx?
 
@@ -255,10 +256,8 @@ void TransactionService::Evse::loop() {
             txUpdateCondition = true;
             triggerReason = TransactionEventTriggerReason::ChargingStateChanged;
             transaction->notifyChargingState = true;
-        }
-        trackChargingState = chargingState;
-
-        if (transaction->isAuthorized && !transaction->trackAuthorized) {
+            trackChargingState = chargingState;
+        }else if (transaction->isAuthorized && !transaction->trackAuthorized) {
             transaction->trackAuthorized = true;
             txUpdateCondition = true;
             if (transaction->remoteStartId >= 0) {
@@ -282,6 +281,16 @@ void TransactionService::Evse::loop() {
             transaction->trackPowerPathClosed = true;
         } else if (evReadyInput && !evReadyInput() && transaction->trackPowerPathClosed) {
             transaction->trackPowerPathClosed = false;
+        } else if(transaction->periodicMeterValue.size()){
+            txUpdateCondition = true;
+            triggerReason = TransactionEventTriggerReason::MeterValuePeriodic;
+            meterValue = &(transaction->periodicMeterValue);
+            transaction->notifyMeterValue = true;
+        } else if(transaction->clockMeterValue.size()){
+            txUpdateCondition = true;
+            triggerReason = TransactionEventTriggerReason::MeterValueClock;
+            meterValue = &(transaction->clockMeterValue);
+            transaction->notifyMeterValue = true;
         }
 
         if (txUpdateCondition && !txEvent && transaction->started && !transaction->stopped) {
@@ -312,7 +321,10 @@ void TransactionService::Evse::loop() {
             txEvent->remoteStartId = transaction->remoteStartId;
             transaction->notifyRemoteStartId = false;
         }
-        // meterValue not supported
+        if(transaction->notifyMeterValue){
+            txEvent->meterValue = std::move(*meterValue);
+            transaction->notifyMeterValue = false;
+        }
 
         if (transaction->notifyStopIdToken && transaction->stopIdToken) {
             txEvent->idToken = std::unique_ptr<IdToken>(new IdToken(*transaction->stopIdToken.get()));

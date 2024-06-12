@@ -18,7 +18,7 @@ namespace MicroOcpp {
 
 class Model;
 class Operation;
-class Transaction;
+class ITransaction;
 class MeterStore;
 
 class MeteringConnector {
@@ -42,7 +42,7 @@ private:
 
     unsigned long lastSampleTime = 0; //0 means not charging right now
     Timestamp nextAlignedTime;
-    std::shared_ptr<Transaction> transaction;
+    std::shared_ptr<ITransaction> transaction;
     bool trackTxRunning = false;
  
     std::vector<std::unique_ptr<SampledValueSampler>> samplers;
@@ -66,11 +66,11 @@ public:
 
     std::unique_ptr<Operation> takeTriggeredMeterValues();
 
-    void beginTxMeterData(Transaction *transaction);
+    void beginTxMeterData(ITransaction *transaction);
 
-    std::shared_ptr<TransactionMeterData> endTxMeterData(Transaction *transaction);
+    std::shared_ptr<TransactionMeterData> endTxMeterData(ITransaction *transaction);
 
-    std::shared_ptr<TransactionMeterData> getStopTxMeterData(Transaction *transaction);
+    std::shared_ptr<TransactionMeterData> getStopTxMeterData(ITransaction *transaction);
 
     bool existsSampler(const char *measurand, size_t len);
 

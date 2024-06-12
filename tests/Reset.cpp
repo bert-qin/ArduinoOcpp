@@ -33,7 +33,7 @@ TEST_CASE( "Reset" ) {
             ChargerCredentials("test-runner1234"),
             makeDefaultFilesystemAdapter(FilesystemOpt::Use_Mount_FormatOnFail),
             false,
-            ProtocolVersion(2,0,1));
+            VER_2_0_1);
 
     auto context = getOcppContext();
 

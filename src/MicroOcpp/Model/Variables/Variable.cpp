@@ -117,6 +117,13 @@ const char *Variable::getString(AttributeType) {
     MO_DBG_ERR("type err");
     return nullptr;
 }
+const char *Variable::getString() {
+    return getString(AttributeType::Actual);
+}
+
+revision_t Variable::getValueRevision(){
+    return getWriteCount();
+}
 
 bool Variable::hasAttribute(AttributeType attrType) {
     return attributes.has(attrType);

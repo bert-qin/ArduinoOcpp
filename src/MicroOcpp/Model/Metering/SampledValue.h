@@ -10,6 +10,7 @@
 #include <functional>
 
 #include <MicroOcpp/Platform.h>
+#include <MicroOcpp/Version.h>
 
 namespace MicroOcpp {
 
@@ -97,7 +98,7 @@ public:
     SampledValue(const SampledValue& other) : properties(other.properties), context(other.context) { }
     virtual ~SampledValue() = default;
 
-    std::unique_ptr<DynamicJsonDocument> toJson();
+    std::unique_ptr<DynamicJsonDocument> toJson(const ProtocolVersion& version=VER_1_6_J);
 
     virtual operator bool() = 0;
     virtual int32_t toInteger() = 0;
