@@ -17,8 +17,8 @@ MeterValues::MeterValues() {
     
 }
 
-MeterValues::MeterValues(std::vector<std::unique_ptr<MeterValue>>&& meterValue, unsigned int connectorId, std::shared_ptr<ITransaction> transaction) 
-      : meterValue{std::move(meterValue)}, connectorId{connectorId}, transaction{transaction} {
+MeterValues::MeterValues(std::vector<std::unique_ptr<MeterValue>>&& meterValue, unsigned int connectorId, std::shared_ptr<ITransaction> transaction, const ProtocolVersion& version) 
+      : meterValue{std::move(meterValue)}, connectorId{connectorId}, transaction{transaction}, version{version} {
     
 }
 
@@ -33,11 +33,9 @@ const char* MeterValues::getOperationType(){
 std::unique_ptr<DynamicJsonDocument> MeterValues::createReq() {
 
     size_t capacity = 0;
-    bool isOcpp201 = typeid(*transaction)==typeid(Ocpp201::Transaction);
-    
     std::vector<std::unique_ptr<DynamicJsonDocument>> entries;
     for (auto value = meterValue.begin(); value != meterValue.end(); value++) {
-        auto entry = (*value)->toJson(isOcpp201?VER_2_0_1:VER_1_6_J);
+        auto entry = (*value)->toJson(version);
         if (entry) {
             capacity += entry->capacity();
             entries.push_back(std::move(entry));
@@ -53,7 +51,7 @@ std::unique_ptr<DynamicJsonDocument> MeterValues::createReq() {
     auto payload = doc->to<JsonObject>();
 
 #if MO_ENABLE_V201
-    if(isOcpp201){
+    if(version.major == 2){
         payload["evseId"] = connectorId;
     }
     else

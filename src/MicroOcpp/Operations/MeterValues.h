@@ -7,6 +7,7 @@
 
 #include <MicroOcpp/Core/Operation.h>
 #include <MicroOcpp/Core/Time.h>
+#include <MicroOcpp/Version.h>
 
 #include <vector>
 
@@ -24,9 +25,10 @@ private:
     unsigned int connectorId = 0;
 
     std::shared_ptr<ITransaction> transaction;
+    ProtocolVersion version;
 
 public:
-    MeterValues(std::vector<std::unique_ptr<MeterValue>>&& meterValue, unsigned int connectorId, std::shared_ptr<ITransaction> transaction = nullptr);
+    MeterValues(std::vector<std::unique_ptr<MeterValue>>&& meterValue, unsigned int connectorId, std::shared_ptr<ITransaction> transaction = nullptr,const ProtocolVersion& version=VER_1_6_J);
 
     MeterValues(); //for debugging only. Make this for the server pendant
 

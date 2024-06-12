@@ -77,7 +77,7 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
         }else
 #endif
         {
-            auto meterValues = std::unique_ptr<MeterValues>(new MeterValues(std::move(meterData), connectorId, transaction));
+            auto meterValues = std::unique_ptr<MeterValues>(new MeterValues(std::move(meterData), connectorId, transaction,model.getVersion()));
             meterData.clear();
             return std::move(meterValues); //std::move is required for some compilers even if it's not mandated by standard C++
 
@@ -184,12 +184,20 @@ std::unique_ptr<Operation> MeteringConnector::takeTriggeredMeterValues() {
     decltype(meterData) mv_now;
     mv_now.push_back(std::move(sample));
 
-    std::shared_ptr<Transaction> transaction = nullptr;
-    if (model.getConnector(connectorId)) {
-        transaction = model.getConnector(connectorId)->getTransaction();
+    std::shared_ptr<ITransaction> transaction = nullptr;
+    #if MO_ENABLE_V201    
+    if(model.getVersion().major == 2){
+        if(model.getTransactionService() && model.getTransactionService()->getEvse(connectorId))
+        transaction = model.getTransactionService()->getEvse(connectorId)->getTransaction();
     }
-
-    return std::unique_ptr<MeterValues>(new MeterValues(std::move(mv_now), connectorId, transaction));
+    else
+#endif
+    {
+        if (model.getConnector(connectorId)) {
+            transaction = model.getConnector(connectorId)->getTransaction();
+        }
+    }
+    return std::unique_ptr<MeterValues>(new MeterValues(std::move(mv_now), connectorId, transaction, model.getVersion()));
 }
 
 void MeteringConnector::addMeterValueSampler(std::unique_ptr<SampledValueSampler> meterValueSampler) {
