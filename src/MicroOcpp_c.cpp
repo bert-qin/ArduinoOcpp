@@ -258,14 +258,6 @@ ChargePointStatus ocpp_getChargePointStatus_m(unsigned int connectorId) {
     return getChargePointStatus(connectorId);
 }
 
-ChargePointStatus ocpp_getChargePointStatus() {
-    return getChargePointStatus();
-}
-
-ChargePointStatus ocpp_getChargePointStatus_m(unsigned int connectorId) {
-    return getChargePointStatus(connectorId);
-}
-
 void ocpp_setConnectorPluggedInput(InputBool pluggedInput)
 {
     setConnectorPluggedInput(adaptFn(pluggedInput));
