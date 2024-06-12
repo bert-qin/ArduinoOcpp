@@ -153,6 +153,7 @@ set(MO_SRC_UNIT
     tests/Variables.cpp
     tests/Transactions.cpp
     tests/Certificates.cpp
+    tests/FirmwareManagement.cpp
 )
 
 add_executable(mo_unit_tests
@@ -194,6 +195,7 @@ target_compile_definitions(mo_unit_tests PUBLIC
     MO_ChargingScheduleMaxPeriods=4
     MO_MaxChargingProfilesInstalled=3
     MO_ENABLE_CERT_MGMT=1
+    MO_ENABLE_CONNECTOR_LOCK=1
 )
 
 target_compile_options(mo_unit_tests PUBLIC

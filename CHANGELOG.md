@@ -5,10 +5,21 @@
 ### Changed
 
 - Change `MicroOcpp::ChargePointStatus` into C-style enum ([#309](https://github.com/matth-x/MicroOcpp/pull/309))
+- Connector lock disabled by default per `MO_ENABLE_CONNECTOR_LOCK` ([#312](https://github.com/matth-x/MicroOcpp/pull/312))
 
 ### Added
 
 - Provide ChargePointStatus in API ([#309](https://github.com/matth-x/MicroOcpp/pull/309))
+- Built-in OTA over FTP ([#313](https://github.com/matth-x/MicroOcpp/pull/313))
+- Built-in Diagnostics over FTP ([#313](https://github.com/matth-x/MicroOcpp/pull/313))
+
+### Removed
+
+- ESP32 built-in HTTP OTA ([#313](https://github.com/matth-x/MicroOcpp/pull/313))
+
+### Fixed
+
+- Skip Unix files . and .. in ftw_root ([#313](https://github.com/matth-x/MicroOcpp/pull/313))
 
 ## [1.1.0] - 2024-05-21
 
