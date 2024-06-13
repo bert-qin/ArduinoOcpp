@@ -297,6 +297,7 @@ public:
     unsigned int txNr = 0; //client-side key of this tx object (!= transactionId)
     std::vector<std::unique_ptr<MeterValue>> clockMeterValue;
     std::vector<std::unique_ptr<MeterValue>> periodicMeterValue;
+    std::vector<std::unique_ptr<MeterValue>> triggerMeterValue;
     bool isRunning() override {return started && !stopped;} //tx is running
     bool isSilent() override {return silent;} //no data will be sent to server and server will not assign transactionId
     unsigned int getConnectorId() override {return connectorId;}
@@ -308,6 +309,8 @@ public:
                 clockMeterValue.push_back(std::move(i));
             }else if(i->getReadingContext()==ReadingContext::SamplePeriodic){
                 periodicMeterValue.push_back(std::move(i));
+            }else if(i->getReadingContext()==ReadingContext::Trigger){
+                triggerMeterValue.push_back(std::move(i));
             }else{
                 // do nothing
             }

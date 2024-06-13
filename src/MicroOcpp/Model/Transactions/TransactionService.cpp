@@ -291,6 +291,11 @@ void TransactionService::Evse::loop() {
             triggerReason = TransactionEventTriggerReason::MeterValueClock;
             meterValue = &(transaction->clockMeterValue);
             transaction->notifyMeterValue = true;
+        } else if(transaction->triggerMeterValue.size()){
+            txUpdateCondition = true;
+            triggerReason = TransactionEventTriggerReason::Trigger;
+            meterValue = &(transaction->triggerMeterValue);
+            transaction->notifyMeterValue = true;
         }
 
         if (txUpdateCondition && !txEvent && transaction->started && !transaction->stopped) {

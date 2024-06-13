@@ -45,6 +45,9 @@ public:
     bool removeTxMeterData(unsigned int connectorId, unsigned int txNr);
 
     int getNumConnectors() {return connectors.size();}
+#if MO_ENABLE_V201 
+    bool takeTriggeredTransactionEvent(int connectorId);
+#endif
 };
 
 } //end namespace MicroOcpp

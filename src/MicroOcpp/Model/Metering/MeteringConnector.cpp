@@ -188,7 +188,9 @@ std::unique_ptr<Operation> MeteringConnector::takeTriggeredMeterValues() {
     #if MO_ENABLE_V201    
     if(model.getVersion().major == 2){
         if(model.getTransactionService() && model.getTransactionService()->getEvse(connectorId))
-        transaction = model.getTransactionService()->getEvse(connectorId)->getTransaction();
+        {
+            transaction = model.getTransactionService()->getEvse(connectorId)->getTransaction();
+        }
     }
     else
 #endif
@@ -265,3 +267,22 @@ bool MeteringConnector::existsSampler(const char *measurand, size_t len) {
 
     return false;
 }
+
+#if MO_ENABLE_V201 
+bool MeteringConnector::takeTriggeredTransactionEvent() {
+    auto sample = sampledDataBuilder->takeSample(model.getClock().now(), ReadingContext::Trigger);
+    if (sample) {
+        decltype(meterData) mv_now;
+        mv_now.push_back(std::move(sample));
+        std::shared_ptr<Ocpp201::Transaction> transaction = nullptr;
+        if(model.getTransactionService() && model.getTransactionService()->getEvse(connectorId)){
+            transaction = model.getTransactionService()->getEvse(connectorId)->getTransaction();
+            if(transaction && transaction->isRunning()){
+                transaction->sendMeterValue(std::move(mv_now));
+                return true;
+            }
+        }
+    }
+    return false;
+}
+#endif

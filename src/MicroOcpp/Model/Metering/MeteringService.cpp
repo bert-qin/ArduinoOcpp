@@ -165,3 +165,22 @@ std::shared_ptr<TransactionMeterData> MeteringService::getStopTxMeterData(Transa
 bool MeteringService::removeTxMeterData(unsigned int connectorId, unsigned int txNr) {
     return meterStore.remove(connectorId, txNr);
 }
+
+#if MO_ENABLE_V201 
+bool MeteringService::takeTriggeredTransactionEvent(int connectorId) {
+    if (connectorId < 0 || connectorId >= (int) connectors.size()) {
+        MO_DBG_ERR("connectorId out of bounds. Ignore");
+        return false;
+    }
+    auto& connector = connectors.at(connectorId);
+    if (connector.get()) {
+        if (connector->takeTriggeredTransactionEvent()) {
+            return true;
+        }
+        MO_DBG_DEBUG("Did not take any samples for connectorId %d", connectorId);
+        return false;
+    }
+    MO_DBG_ERR("Could not find connector");
+    return false;
+}
+# endif

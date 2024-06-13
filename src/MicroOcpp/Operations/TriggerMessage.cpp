@@ -46,7 +46,28 @@ void TriggerMessage::processReq(JsonObject payload) {
                 //errorCode = "PropertyConstraintViolation";
             }
         }
-    } else if (!strcmp(requestedMessage, "StatusNotification")) {
+    }
+#if MO_ENABLE_V201
+    else if (!strcmp(requestedMessage, "TransactionEvent")) {
+        if (auto mService = context.getModel().getMeteringService()) {
+            if (connectorId < 0) {
+                auto nConnectors = mService->getNumConnectors();
+                for (decltype(nConnectors) cId = 0; cId < nConnectors; cId++) {
+                    if(mService->takeTriggeredTransactionEvent(cId)){
+                        statusMessage = "Accepted";
+                    }
+                }
+            } else if (connectorId < mService->getNumConnectors()) {
+                if(mService->takeTriggeredTransactionEvent(connectorId)){
+                    statusMessage = "Accepted";
+                }
+            } else {
+                //do nothing
+            }
+        }
+    }
+#endif
+    else if (!strcmp(requestedMessage, "StatusNotification")) {
         unsigned int cIdRangeBegin = 0, cIdRangeEnd = 0;
         if (connectorId < 0) {
             cIdRangeEnd = context.getModel().getNumConnectors();

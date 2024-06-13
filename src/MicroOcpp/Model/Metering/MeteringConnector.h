@@ -74,6 +74,10 @@ public:
 
     bool existsSampler(const char *measurand, size_t len);
 
+#if MO_ENABLE_V201
+    bool takeTriggeredTransactionEvent();
+#endif
+
 };
 
 } //end namespace MicroOcpp
