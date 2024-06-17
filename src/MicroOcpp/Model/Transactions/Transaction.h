@@ -40,8 +40,9 @@ public:
     virtual bool isRunning()=0;
     virtual bool isSilent()=0;
     virtual unsigned int getConnectorId()=0;
+    virtual int getTransactionId() {return 0;}
+    virtual const char* getTransactionIdStr() {return "";}
     virtual unsigned int getTxNr()=0;
-    virtual int getTransactionId()=0;
     virtual void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue){};
 };
 
@@ -99,7 +100,7 @@ public:
     /*
      * data assigned by OCPP server
      */
-    int getTransactionId() {return transactionId;}
+    int getTransactionId() override {return transactionId;}
     bool isAuthorized() {return authorized;} //Authorize has been accepted
     bool isIdTagDeauthorized() {return deauthorized;} //StartTransaction has been rejected
 
@@ -303,7 +304,7 @@ public:
     bool isSilent() override {return silent;} //no data will be sent to server and server will not assign transactionId
     unsigned int getConnectorId() override {return connectorId;}
     unsigned int getTxNr() override{return txNr;} //internal primary key of this tx object
-    int getTransactionId() {return 0;}
+    const char* getTransactionIdStr() override {return transactionId;}
     void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue) override{
         for(auto& i : meterValue){
             if(i->getReadingContext()==ReadingContext::SampleClock){

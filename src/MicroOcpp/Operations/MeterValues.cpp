@@ -46,6 +46,11 @@ std::unique_ptr<DynamicJsonDocument> MeterValues::createReq() {
 
     capacity += JSON_OBJECT_SIZE(3);
     capacity += JSON_ARRAY_SIZE(entries.size());
+#if MO_ENABLE_V201
+    if(version.major == 2){
+        capacity+=MO_TXID_LEN_MAX;
+    }
+#endif
 
     auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(capacity + 100)); //TODO remove safety space
     auto payload = doc->to<JsonObject>();
@@ -60,8 +65,19 @@ std::unique_ptr<DynamicJsonDocument> MeterValues::createReq() {
         payload["connectorId"] = connectorId;
     }
 
-    if (transaction && transaction->getTransactionId() > 0) { //add txId if MVs are assigned to a tx with txId
-        payload["transactionId"] = transaction->getTransactionId();
+    if (transaction) { //add txId if MVs are assigned to a tx with txId
+#if MO_ENABLE_V201
+        if(version.major == 2){
+            if(strlen(transaction->getTransactionIdStr())>0){
+                payload["transactionId"] = transaction->getTransactionIdStr();
+            }
+        }else
+#endif
+        {
+            if(transaction->getTransactionId() > 0){
+                payload["transactionId"] = transaction->getTransactionId();
+            }
+        }
     }
 
     auto meterValueJson = payload.createNestedArray("meterValue");
