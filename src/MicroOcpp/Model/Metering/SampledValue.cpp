@@ -126,15 +126,17 @@ std::unique_ptr<DynamicJsonDocument> SampledValue::toJson(const ProtocolVersion&
     if (!properties.getLocation().empty())
         payload["location"] = properties.getLocation();
     if (!properties.getUnit().empty())
+    {
 #if MO_ENABLE_V201
-    if(version.major==2)
-    {
-        payload["unitOfMeasure"]["unit"] = properties.getUnit();
-    }
-    else
+        if(version.major==2)
+        {
+            payload["unitOfMeasure"]["unit"] = properties.getUnit();
+        }
+        else
 #endif
-    {
-        payload["unit"] = properties.getUnit();
+        {
+            payload["unit"] = properties.getUnit();
+        }
     }
     return result;
 }

@@ -144,7 +144,7 @@ void mocpp_loop();
  * Returns the transaction object if it was possible to create the transaction process. Returns
  * nullptr if either another transaction process is still active or you need to try it again later.
  */
-std::shared_ptr<MicroOcpp::Transaction> beginTransaction(const char *idTag, unsigned int connectorId = 1);
+std::shared_ptr<MicroOcpp::ITransaction> beginTransaction(const char *idTag, unsigned int connectorId = 1);
 
 /*
  * Begin the transaction process and skip the OCPP-side authorization. See beginTransaction(...) for a

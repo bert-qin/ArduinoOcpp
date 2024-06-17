@@ -70,8 +70,7 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
     if ((txBreak || meterData.size() >= (size_t) meterValueCacheSizeInt->getInt()) && !meterData.empty()) {
 #if MO_ENABLE_V201
         if(model.getVersion().major==2 && curTx && curTx->isRunning()){
-            std::shared_ptr<Ocpp201::Transaction> curTx201 = std::dynamic_pointer_cast<Ocpp201::Transaction>(curTx);
-            curTx201->sendMeterValue(std::move(meterData));
+            curTx->sendMeterValue(std::move(meterData));
             meterData.clear();
             return nullptr;
         }else

@@ -42,6 +42,7 @@ public:
     virtual unsigned int getConnectorId()=0;
     virtual unsigned int getTxNr()=0;
     virtual int getTransactionId()=0;
+    virtual void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue){};
 };
 
 class Transaction : public ITransaction{
@@ -303,7 +304,7 @@ public:
     unsigned int getConnectorId() override {return connectorId;}
     unsigned int getTxNr() override{return txNr;} //internal primary key of this tx object
     int getTransactionId() {return 0;}
-    void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue){
+    void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue) override{
         for(auto& i : meterValue){
             if(i->getReadingContext()==ReadingContext::SampleClock){
                 clockMeterValue.push_back(std::move(i));

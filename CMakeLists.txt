@@ -117,6 +117,7 @@ if(ESP_PLATFORM)
         -DMO_DBG_LEVEL=MO_DL_DEBUG
         -DMO_TRAFFIC_OUT
         -DMO_ENABLE_V201=1
+        -DMO_ENABLE_CONNECTOR_LOCK
         )
 
     return()

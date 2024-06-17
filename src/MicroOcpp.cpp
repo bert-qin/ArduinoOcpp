@@ -416,11 +416,24 @@ void mocpp_loop() {
     context->loop();
 }
 
-std::shared_ptr<Transaction> beginTransaction(const char *idTag, unsigned int connectorId) {
+std::shared_ptr<ITransaction> beginTransaction(const char *idTag, unsigned int connectorId) {
     if (!context) {
         MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
         return nullptr;
     }
+#if MO_ENABLE_V201
+    if(context->getVersion().major==2){
+        if (auto txService = context->getModel().getTransactionService()) {
+            if (auto evse = txService->getEvse(connectorId)) {
+                if (!evse->getTransaction() || !evse->getTransaction()->isAuthorized) {
+                    evse->beginAuthorization(idTag);
+                }
+                return evse->getTransaction();
+            }
+        }
+        return nullptr;
+    }
+#endif
     if (!idTag || strnlen(idTag, IDTAG_LEN_MAX + 2) > IDTAG_LEN_MAX) {
         MO_DBG_ERR("idTag format violation. Expect c-style string with at most %u characters", IDTAG_LEN_MAX);
         return nullptr;
@@ -458,6 +471,18 @@ bool endTransaction(const char *idTag, const char *reason, unsigned int connecto
         MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
         return false;
     }
+#if MO_ENABLE_V201
+    if(context->getVersion().major==2){
+        if (auto txService = context->getModel().getTransactionService()) {
+            if (auto evse = txService->getEvse(connectorId)) {
+                if (evse->getTransaction() && evse->getTransaction()->isAuthorized) {
+                    return evse->endAuthorization(idTag);
+                }
+            }
+        }
+        return false;
+    }
+#endif    
     bool res = false;
     if (isTransactionActive(connectorId) && getTransactionIdTag(connectorId)) {
         //end transaction now if either idTag is nullptr (i.e. force stop) or the idTag matches beginTransaction
@@ -511,6 +536,18 @@ bool isTransactionRunning(unsigned int connectorId) {
         MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
         return false;
     }
+    #if MO_ENABLE_V201
+    if(context->getVersion().major==2){
+        if (auto txService = context->getModel().getTransactionService()) {
+            if (auto evse = txService->getEvse(connectorId)) {
+                if (evse->getTransaction()) {
+                    return evse->getTransaction()->isRunning();
+                }
+            }
+        }
+        return false;
+    }
+#endif
     auto connector = context->getModel().getConnector(connectorId);
     if (!connector) {
         MO_DBG_ERR("could not find connector");
