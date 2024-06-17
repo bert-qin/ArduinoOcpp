@@ -12,6 +12,7 @@
 #include <MicroOcpp/Model/FirmwareManagement/FirmwareStatus.h>
 #include <MicroOcpp/Core/Time.h>
 #include <MicroOcpp/Core/Ftp.h>
+#include <MicroOcpp/Version.h>
 
 namespace MicroOcpp {
 
@@ -110,6 +111,7 @@ public:
     void setOnInstall(std::function<bool(const char *location)> onInstall);
 
     void setInstallationStatusInput(std::function<InstallationStatus()> installationStatusInput);
+    const ProtocolVersion& getVersion();
 };
 
 } //endif namespace MicroOcpp

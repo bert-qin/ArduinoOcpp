@@ -324,6 +324,9 @@ void FirmwareService::setOnInstall(std::function<bool(const char *location)> onI
 void FirmwareService::setInstallationStatusInput(std::function<InstallationStatus()> installationStatusInput) {
     this->installationStatusInput = installationStatusInput;
 }
+const ProtocolVersion& FirmwareService::getVersion(){
+    return context.getVersion();
+};
 
 void FirmwareService::resetStage() {
     stage = UpdateStage::Idle;
