@@ -122,7 +122,7 @@ ChargePointStatus Connector::getStatus() {
         res = ChargePointStatus_Reserved;
     }
     #endif 
-    else if ((!transaction || !transaction->isActive()) &&                 //no transaction preparation
+    else if ((!transaction) &&                                           //no transaction process occupying the connector
                (!connectorPluggedInput || !connectorPluggedInput()) &&   //no vehicle plugged
                (!occupiedInput || !occupiedInput())) {                       //occupied override clear
         res = ChargePointStatus_Available;
@@ -134,7 +134,8 @@ ChargePointStatus Connector::getStatus() {
         if (previous == ChargePointStatus_Finishing ||
                 previous == ChargePointStatus_Charging ||
                 previous == ChargePointStatus_SuspendedEV ||
-                previous == ChargePointStatus_SuspendedEVSE) {
+                previous == ChargePointStatus_SuspendedEVSE ||
+                (transaction && transaction->getStartSync().isRequested())) { //transaction process still occupying the connector
             res = ChargePointStatus_Finishing;
         } else {
             res = ChargePointStatus_Preparing;
@@ -414,7 +415,7 @@ void Connector::loop() {
 
     auto status = getStatus();
 
-    if (model.getVersion().major == 1) {
+    if (model.getVersion().major == 1 && model.getClock().now() >= MIN_TIME) {
         //OCPP 1.6: use StatusNotification to send error codes
         for (auto i = std::min(errorDataInputs.size(), trackErrorDataInputs.size()); i >= 1; i--) {
             auto index = i - 1;
@@ -446,7 +447,7 @@ void Connector::loop() {
     }
 
     if (reportedStatus != currentStatus &&
-            model.getClock().now() >= Timestamp(2010,0,0,0,0,0) &&
+            model.getClock().now() >= MIN_TIME &&
             (minimumStatusDurationInt->getInt() <= 0 || //MinimumStatusDuration disabled
             mocpp_tick_ms() - t_statusTransition >= ((unsigned long) minimumStatusDurationInt->getInt()) * 1000UL)) {
         reportedStatus = currentStatus;
