@@ -117,7 +117,7 @@ std::unique_ptr<Request> MeteringService::takeTriggeredMeterValues(int connector
     return nullptr;
 }
 
-void MeteringService::beginTxMeterData(Transaction *transaction) {
+void MeteringService::beginTxMeterData(ITransaction *transaction) {
     if (!transaction) {
         MO_DBG_ERR("invalid argument");
         return;
@@ -132,7 +132,7 @@ void MeteringService::beginTxMeterData(Transaction *transaction) {
     connector->beginTxMeterData(transaction);
 }
 
-std::shared_ptr<TransactionMeterData> MeteringService::endTxMeterData(Transaction *transaction) {
+std::shared_ptr<TransactionMeterData> MeteringService::endTxMeterData(ITransaction *transaction) {
     if (!transaction) {
         MO_DBG_ERR("invalid argument");
         return nullptr;
@@ -147,7 +147,7 @@ std::shared_ptr<TransactionMeterData> MeteringService::endTxMeterData(Transactio
     return connector->endTxMeterData(transaction);
 }
 
-std::shared_ptr<TransactionMeterData> MeteringService::getStopTxMeterData(Transaction *transaction) {
+std::shared_ptr<TransactionMeterData> MeteringService::getStopTxMeterData(ITransaction *transaction) {
     if (!transaction) {
         MO_DBG_ERR("invalid argument");
         return nullptr;
@@ -182,5 +182,18 @@ bool MeteringService::takeTriggeredTransactionEvent(int connectorId) {
     }
     MO_DBG_ERR("Could not find connector");
     return false;
+}
+
+std::unique_ptr<MeterValue> MeteringService::takeBeginMeterValue(int connectorId){
+    if (connectorId < 0 || connectorId >= (int) connectors.size()) {
+        MO_DBG_ERR("connectorId out of bounds. Ignore");
+        return nullptr;
+    }
+    auto& connector = connectors.at(connectorId);
+    if (connector.get()) {
+        return std::move(connector->takeBeginMeterValue());
+    }
+    MO_DBG_ERR("Could not find connector");
+    return nullptr;
 }
 # endif

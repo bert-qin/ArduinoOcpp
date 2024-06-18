@@ -36,17 +36,18 @@ public:
 
     std::unique_ptr<Request> takeTriggeredMeterValues(int connectorId); //snapshot of all meters now
 
-    void beginTxMeterData(Transaction *transaction);
+    void beginTxMeterData(ITransaction *transaction);
 
-    std::shared_ptr<TransactionMeterData> endTxMeterData(Transaction *transaction); //use return value to keep data in cache
+    std::shared_ptr<TransactionMeterData> endTxMeterData(ITransaction *transaction); //use return value to keep data in cache
 
-    std::shared_ptr<TransactionMeterData> getStopTxMeterData(Transaction *transaction); //prefer endTxMeterData when possible
+    std::shared_ptr<TransactionMeterData> getStopTxMeterData(ITransaction *transaction); //prefer endTxMeterData when possible
 
     bool removeTxMeterData(unsigned int connectorId, unsigned int txNr);
 
     int getNumConnectors() {return connectors.size();}
 #if MO_ENABLE_V201 
     bool takeTriggeredTransactionEvent(int connectorId);
+    std::unique_ptr<MeterValue> takeBeginMeterValue(int connectorId);
 #endif
 };
 

@@ -76,6 +76,7 @@ public:
 
 #if MO_ENABLE_V201
     bool takeTriggeredTransactionEvent();
+    std::unique_ptr<MeterValue> takeBeginMeterValue();
 #endif
 
 };

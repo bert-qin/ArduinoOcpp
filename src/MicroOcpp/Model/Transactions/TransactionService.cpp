@@ -20,6 +20,7 @@
 #include <MicroOcpp/Operations/RequestStopTransaction.h>
 #include <MicroOcpp/Core/SimpleRequestFactory.h>
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Model/Metering/MeteringService.h>
 
 using namespace MicroOcpp;
 using namespace MicroOcpp::Ocpp201;
@@ -164,6 +165,16 @@ void TransactionService::Evse::loop() {
 
             txEvent->eventType = TransactionEventData::Type::Ended;
             txEvent->triggerReason = triggerReason;
+
+            auto meteringService = context.getModel().getMeteringService();
+            if (meteringService) {
+                std::shared_ptr<TransactionMeterData> stopTxData = meteringService->endTxMeterData(transaction.get());
+                if(stopTxData){
+                    txEvent->meterValue = std::move(stopTxData->retrieveStopTxData());
+                }
+            } else {
+                MO_DBG_ERR("MeterStart undefined");
+            }
         }
     } 
     
@@ -208,7 +219,7 @@ void TransactionService::Evse::loop() {
                 (!transaction || (transaction->active && !transaction->started)) &&
                 (!startTxReadyInput || startTxReadyInput())) {
             // start tx
-
+            
             if (!transaction) {
                 transaction = allocateTransaction();
                 if (!transaction) {
@@ -228,6 +239,19 @@ void TransactionService::Evse::loop() {
 
             txEvent->eventType = TransactionEventData::Type::Started;
             txEvent->triggerReason = triggerReason;
+
+            auto meteringService = context.getModel().getMeteringService();
+            if (meteringService) {
+                meteringService->beginTxMeterData(transaction.get());
+                auto value = meteringService->takeBeginMeterValue(evseId);
+                if(value){
+                    std::vector<std::unique_ptr<MeterValue>> data;
+                    data.push_back(std::move(value));
+                    txEvent->meterValue = std::move(data);
+                }
+            } else {
+                MO_DBG_ERR("MeterStart undefined");
+            }
         }
     }
 
@@ -245,6 +269,7 @@ void TransactionService::Evse::loop() {
     }
 
     std::vector<std::unique_ptr<MeterValue>>* meterValue = nullptr;
+
     if (transaction) {
         // update tx?
 

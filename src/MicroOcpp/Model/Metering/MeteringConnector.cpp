@@ -284,4 +284,9 @@ bool MeteringConnector::takeTriggeredTransactionEvent() {
     }
     return false;
 }
+
+std::unique_ptr<MeterValue> MeteringConnector::takeBeginMeterValue() {
+    auto sampleTxBegin = sampledDataBuilder->takeSample(model.getClock().now(), ReadingContext::TransactionBegin);
+    return std::move(sampleTxBegin);
+}
 #endif
