@@ -6,15 +6,17 @@
 #define MO_DIAGNOSTICS_STATUS
 
 namespace MicroOcpp {
-namespace Ocpp16 {
-
 enum class DiagnosticsStatus {
     Idle,
     Uploaded,
     UploadFailed,
-    Uploading
+    Uploading,
+#if MO_ENABLE_V201
+    BadMessage,
+    NotSupportedOperation,
+    PermissionDenied,
+    AcceptedCanceled
+#endif    
 };
-
-}
 } //end namespace MicroOcpp
 #endif

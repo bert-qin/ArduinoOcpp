@@ -9,7 +9,9 @@
 #include <MicroOcpp/Debug.h>
 
 #include <MicroOcpp/Operations/GetDiagnostics.h>
+#include <MicroOcpp/Operations/GetLog.h>
 #include <MicroOcpp/Operations/DiagnosticsStatusNotification.h>
+#include <MicroOcpp/Operations/LogStatusNotification.h>
 
 //Fetch relevant data from other modules for diagnostics
 #include <MicroOcpp/Model/Boot/BootService.h>
@@ -20,16 +22,24 @@
 #include <MicroOcpp/Model/ConnectorBase/UnlockConnectorResult.h> //for MO_ENABLE_CONNECTOR_LOCK
 
 using namespace MicroOcpp;
-using Ocpp16::DiagnosticsStatus;
 
 DiagnosticsService::DiagnosticsService(Context& context) : context(context) {
-    
-    context.getOperationRegistry().registerOperation("GetDiagnostics", [this] () {
-        return new Ocpp16::GetDiagnostics(*this);});
-
-    //Register message handler for TriggerMessage operation
-    context.getOperationRegistry().registerOperation("DiagnosticsStatusNotification", [this] () {
-        return new Ocpp16::DiagnosticsStatusNotification(getDiagnosticsStatus());});
+#if MO_ENABLE_V201
+    if(context.getVersion().major==2){
+        context.getOperationRegistry().registerOperation("GetLog", [this] () {
+            return new Ocpp201::GetLog(*this);});
+        //Register message handler for TriggerMessage operation
+        context.getOperationRegistry().registerOperation("LogStatusNotification", [this] () {
+            return new Ocpp201::LogStatusNotification(getDiagnosticsStatus());});
+    }else
+#endif
+    {
+        context.getOperationRegistry().registerOperation("GetDiagnostics", [this] () {
+            return new Ocpp16::GetDiagnostics(*this);});
+        //Register message handler for TriggerMessage operation
+        context.getOperationRegistry().registerOperation("DiagnosticsStatusNotification", [this] () {
+            return new Ocpp16::DiagnosticsStatusNotification(getDiagnosticsStatus());});
+    }
 }
 
 DiagnosticsService::~DiagnosticsService() {
@@ -118,7 +128,7 @@ void DiagnosticsService::loop() {
 }
 
 //timestamps before year 2021 will be treated as "undefined"
-std::string DiagnosticsService::requestDiagnosticsUpload(const char *location, unsigned int retries, unsigned int retryInterval, Timestamp startTime, Timestamp stopTime) {
+std::string DiagnosticsService::requestDiagnosticsUpload(const char *location, unsigned int retries, unsigned int retryInterval, Timestamp startTime, Timestamp stopTime, int requestId) {
     if (onUpload == nullptr) {
         return std::string{};
     }
@@ -142,6 +152,7 @@ std::string DiagnosticsService::requestDiagnosticsUpload(const char *location, u
     this->retries = retries;
     this->retryInterval = retryInterval;
     this->startTime = startTime;
+    this->requestId = requestId;
     
     Timestamp stopMin = Timestamp(2021,0,0,0,0,0);
     if (stopTime >= stopMin) {
@@ -214,7 +225,15 @@ std::unique_ptr<Request> DiagnosticsService::getDiagnosticsStatusNotification() 
     if (getDiagnosticsStatus() != lastReportedStatus) {
         lastReportedStatus = getDiagnosticsStatus();
         if (lastReportedStatus != DiagnosticsStatus::Idle) {
-            Operation *diagNotificationMsg = new Ocpp16::DiagnosticsStatusNotification(lastReportedStatus);
+            Operation *diagNotificationMsg = nullptr;
+#if MO_ENABLE_V201            
+            if(context.getVersion().major==2){
+                diagNotificationMsg = new Ocpp201::LogStatusNotification(lastReportedStatus,requestId);
+            }else
+#endif
+            {
+                diagNotificationMsg = new Ocpp16::DiagnosticsStatusNotification(lastReportedStatus);
+            }
             auto diagNotification = makeRequest(diagNotificationMsg);
             return diagNotification;
         }

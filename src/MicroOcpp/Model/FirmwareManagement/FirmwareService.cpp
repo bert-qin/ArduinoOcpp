@@ -23,7 +23,6 @@
 #endif
 
 using namespace MicroOcpp;
-using MicroOcpp::Ocpp16::FirmwareStatus;
 
 FirmwareService::FirmwareService(Context& context) : context(context) {
     
@@ -32,7 +31,7 @@ FirmwareService::FirmwareService(Context& context) : context(context) {
 
     //Register message handler for TriggerMessage operation
     context.getOperationRegistry().registerOperation("FirmwareStatusNotification", [this] () {
-        return new Ocpp16::FirmwareStatusNotification(getFirmwareStatus());});
+        return new FirmwareStatusNotification(getFirmwareStatus());});
 }
 
 void FirmwareService::setBuildNumber(const char *buildNumber) {
@@ -202,7 +201,7 @@ void FirmwareService::loop() {
     }
 }
 
-void FirmwareService::scheduleFirmwareUpdate(const char *location, Timestamp retreiveDate, unsigned int retries, unsigned int retryInterval) {
+void FirmwareService::scheduleFirmwareUpdate(const char *location, Timestamp retreiveDate, unsigned int retries, unsigned int retryInterval, int requestId) {
 
     if (!onDownload && !onInstall) {
         MO_DBG_ERR("FW service not configured");
@@ -214,6 +213,7 @@ void FirmwareService::scheduleFirmwareUpdate(const char *location, Timestamp ret
     this->retreiveDate = retreiveDate;
     this->retries = retries;
     this->retryInterval = retryInterval;
+    this->requestId = requestId;
 
     if (MO_IGNORE_FW_RETR_DATE) {
         MO_DBG_DEBUG("ignore FW update retreive date");
@@ -291,7 +291,7 @@ std::unique_ptr<Request> FirmwareService::getFirmwareStatusNotification() {
             buildNumber.clear();
 
             lastReportedStatus = FirmwareStatus::Installed;
-            auto fwNotificationMsg = new Ocpp16::FirmwareStatusNotification(lastReportedStatus);
+            auto fwNotificationMsg = new FirmwareStatusNotification(lastReportedStatus,requestId);
             auto fwNotification = makeRequest(fwNotificationMsg);
             return fwNotification;
         }
@@ -300,7 +300,7 @@ std::unique_ptr<Request> FirmwareService::getFirmwareStatusNotification() {
     if (getFirmwareStatus() != lastReportedStatus) {
         lastReportedStatus = getFirmwareStatus();
         if (lastReportedStatus != FirmwareStatus::Idle) {
-            auto fwNotificationMsg = new Ocpp16::FirmwareStatusNotification(lastReportedStatus);
+            auto fwNotificationMsg = new FirmwareStatusNotification(lastReportedStatus,requestId);
             auto fwNotification = makeRequest(fwNotificationMsg);
             return fwNotification;
         }

@@ -10,14 +10,14 @@
 #define MO_FIRMWARESTATUSNOTIFICATION_H
 
 namespace MicroOcpp {
-namespace Ocpp16 {
 
 class FirmwareStatusNotification : public Operation {
 private:
     FirmwareStatus status = FirmwareStatus::Idle;
+    int requestId = -1;
     static const char *cstrFromFwStatus(FirmwareStatus status);
 public:
-    FirmwareStatusNotification(FirmwareStatus status);
+    FirmwareStatusNotification(FirmwareStatus status, int requestId=-1);
 
     const char* getOperationType() override {return "FirmwareStatusNotification"; }
 
@@ -27,7 +27,6 @@ public:
 
 };
 
-} //end namespace Ocpp16
 } //end namespace MicroOcpp
 
 #endif

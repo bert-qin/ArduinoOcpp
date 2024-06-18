@@ -7,9 +7,9 @@
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/FirmwareManagement/FirmwareService.h>
 
-using MicroOcpp::Ocpp16::FirmwareStatusNotification;
+using namespace MicroOcpp;
 
-FirmwareStatusNotification::FirmwareStatusNotification(FirmwareStatus status) : status{status} {
+FirmwareStatusNotification::FirmwareStatusNotification(FirmwareStatus status, int requestId) : status{status} ,requestId{requestId}{
 
 }
 
@@ -36,13 +36,39 @@ const char *FirmwareStatusNotification::cstrFromFwStatus(FirmwareStatus status) 
         case (FirmwareStatus::Installed):
             return "Installed";
             break;
+#if MO_ENABLE_V201
+        case (FirmwareStatus::DownloadScheduled):
+            return "DownloadScheduled";
+            break;
+        case (FirmwareStatus::DownloadPaused):
+            return "DownloadPaused";
+            break;
+        case (FirmwareStatus::InstallRebooting):
+            return "InstallRebooting";
+            break;
+        case (FirmwareStatus::InstallScheduled):
+            return "InstallScheduled";
+            break;
+        case (FirmwareStatus::InstallVerificationFailed):
+            return "InstallVerificationFailed";
+            break;
+        case (FirmwareStatus::InvalidSignature):
+            return "InvalidSignature";
+            break;
+        case (FirmwareStatus::SignatureVerified):
+            return "SignatureVerified";
+            break;
+# endif
     }
     return NULL; //cannot be reached
 }
 
 std::unique_ptr<DynamicJsonDocument> FirmwareStatusNotification::createReq() {
-    auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(1)));
+    auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(2)));
     JsonObject payload = doc->to<JsonObject>();
+    if(requestId!=-1){
+        payload["requestId"] = requestId;
+    }
     payload["status"] = cstrFromFwStatus(status);
     return doc;
 }

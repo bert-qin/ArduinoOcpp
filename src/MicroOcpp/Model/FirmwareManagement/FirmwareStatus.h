@@ -6,7 +6,6 @@
 #define MO_FIRMWARE_STATUS
 
 namespace MicroOcpp {
-namespace Ocpp16 {
 
 enum class FirmwareStatus {
     Downloaded,
@@ -15,9 +14,17 @@ enum class FirmwareStatus {
     Idle,
     InstallationFailed,
     Installing,
-    Installed
+    Installed,
+# if MO_ENABLE_V201
+    DownloadScheduled,
+    DownloadPaused,
+    InstallRebooting,
+    InstallScheduled,
+    InstallVerificationFailed,
+    InvalidSignature,
+    SignatureVerified
+#endif    
 };
 
-}
 } //end namespace MicroOcpp
 #endif

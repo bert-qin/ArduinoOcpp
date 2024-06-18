@@ -15,6 +15,7 @@ UpdateFirmware::UpdateFirmware(FirmwareService& fwService) : fwService(fwService
 
 void UpdateFirmware::processReq(JsonObject payload) {
     const char* retrieveKey = "retrieveDate";
+    int requestId = payload["requestId"]|-1;
 #if MO_ENABLE_V201    
     if(fwService.getVersion().major==2){
         if(payload.containsKey("firmware")){
@@ -54,13 +55,13 @@ void UpdateFirmware::processReq(JsonObject payload) {
         return;
     }
     
-    fwService.scheduleFirmwareUpdate(location, retrieveDate, (unsigned int) retries, (unsigned int) retryInterval);
+    fwService.scheduleFirmwareUpdate(location, retrieveDate, (unsigned int) retries, (unsigned int) retryInterval, requestId);
 }
 
 std::unique_ptr<DynamicJsonDocument> UpdateFirmware::createConf(){
 #if MO_ENABLE_V201    
     if(fwService.getVersion().major==2){
-        auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(1)));
+        auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(1)+16));
         JsonObject payload = doc->to<JsonObject>();
         payload["status"] = "Accepted";
         return doc;

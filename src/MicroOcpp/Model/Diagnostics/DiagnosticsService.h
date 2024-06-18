@@ -32,6 +32,7 @@ private:
     std::string location;
     unsigned int retries = 0;
     unsigned int retryInterval = 0;
+    int requestId = -1;
     Timestamp startTime;
     Timestamp stopTime;
 
@@ -58,7 +59,7 @@ private:
 
     std::unique_ptr<Request> getDiagnosticsStatusNotification();
 
-    Ocpp16::DiagnosticsStatus lastReportedStatus = Ocpp16::DiagnosticsStatus::Idle;
+    DiagnosticsStatus lastReportedStatus = DiagnosticsStatus::Idle;
 
 public:
     DiagnosticsService(Context& context);
@@ -69,9 +70,9 @@ public:
     //timestamps before year 2021 will be treated as "undefined"
     //returns empty std::string if onUpload is missing or upload cannot be scheduled for another reason
     //returns fileName of diagnostics file to be uploaded if upload has been scheduled
-    std::string requestDiagnosticsUpload(const char *location, unsigned int retries = 1, unsigned int retryInterval = 0, Timestamp startTime = Timestamp(), Timestamp stopTime = Timestamp());
+    std::string requestDiagnosticsUpload(const char *location, unsigned int retries = 1, unsigned int retryInterval = 0, Timestamp startTime = Timestamp(), Timestamp stopTime = Timestamp(), int requestId=-1);
 
-    Ocpp16::DiagnosticsStatus getDiagnosticsStatus();
+    DiagnosticsStatus getDiagnosticsStatus();
 
     void setRefreshFilename(std::function<std::string()> refreshFn); //refresh a new filename which will be used for the subsequent upload tries
 

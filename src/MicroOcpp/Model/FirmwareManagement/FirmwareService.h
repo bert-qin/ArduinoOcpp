@@ -48,13 +48,14 @@ private:
     std::function<InstallationStatus()> installationStatusInput;
     bool installationIssued = false;
 
-    Ocpp16::FirmwareStatus lastReportedStatus = Ocpp16::FirmwareStatus::Idle;
+    FirmwareStatus lastReportedStatus = FirmwareStatus::Idle;
     bool checkedSuccessfulFwUpdate = false;
 
     std::string location;
     Timestamp retreiveDate;
     unsigned int retries = 0;
     unsigned int retryInterval = 0;
+    int requestId = -1;
 
     std::function<bool(const char *location)> onDownload;
     std::function<bool(const char *location)> onInstall;
@@ -84,9 +85,9 @@ public:
 
     void loop();
 
-    void scheduleFirmwareUpdate(const char *location, Timestamp retreiveDate, unsigned int retries = 1, unsigned int retryInterval = 0);
+    void scheduleFirmwareUpdate(const char *location, Timestamp retreiveDate, unsigned int retries = 1, unsigned int retryInterval = 0, int requestId = -1);
 
-    Ocpp16::FirmwareStatus getFirmwareStatus();
+    FirmwareStatus getFirmwareStatus();
 
     /*
      * Sets the firmware writer. During the UpdateFirmware process, MO will use an FTP client to download the firmware and forward

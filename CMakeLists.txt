@@ -35,11 +35,13 @@ set(MO_SRC
     src/MicroOcpp/Operations/DataTransfer.cpp
     src/MicroOcpp/Operations/DeleteCertificate.cpp
     src/MicroOcpp/Operations/DiagnosticsStatusNotification.cpp
+    src/MicroOcpp/Operations/LogStatusNotification.cpp
     src/MicroOcpp/Operations/FirmwareStatusNotification.cpp
     src/MicroOcpp/Operations/GetBaseReport.cpp
     src/MicroOcpp/Operations/GetCompositeSchedule.cpp
     src/MicroOcpp/Operations/GetConfiguration.cpp
     src/MicroOcpp/Operations/GetDiagnostics.cpp
+    src/MicroOcpp/Operations/GetLog.cpp
     src/MicroOcpp/Operations/GetInstalledCertificateIds.cpp
     src/MicroOcpp/Operations/GetLocalListVersion.cpp
     src/MicroOcpp/Operations/GetVariables.cpp
