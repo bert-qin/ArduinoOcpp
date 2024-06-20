@@ -102,6 +102,7 @@ void MeterValueBuilder::updateObservedSamplers() {
 }
 
 std::unique_ptr<MeterValue> MeterValueBuilder::takeSample(const Timestamp& timestamp, const ReadingContext& context) {
+    MO_DBG_DEBUG("%s,%d",selectString->getString(),samplers.size());
     if (select_observe != selectString->getValueRevision() || //OCPP server has changed configuration about which measurands to take
             samplers.size() != select_mask.size()) {    //Client has added another Measurand; synchronize lists
         MO_DBG_DEBUG("Updating observed samplers due to config change or samplers added");

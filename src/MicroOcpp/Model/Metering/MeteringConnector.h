@@ -48,13 +48,13 @@ private:
     std::vector<std::unique_ptr<SampledValueSampler>> samplers;
     int energySamplerIndex {-1};
 
-    std::shared_ptr<Configuration> meterValueSampleIntervalInt;
-    std::shared_ptr<Configuration> meterValueCacheSizeInt;
+    std::shared_ptr<ICfg> meterValueSampleIntervalInt;
+    std::shared_ptr<ICfg> meterValueCacheSizeInt;
 
-    std::shared_ptr<Configuration> clockAlignedDataIntervalInt;
+    std::shared_ptr<ICfg> clockAlignedDataIntervalInt;
 
-    std::shared_ptr<Configuration> meterValuesInTxOnlyBool;
-    std::shared_ptr<Configuration> stopTxnDataCapturePeriodicBool;
+    std::shared_ptr<ICfg> meterValuesInTxOnlyBool;
+    std::shared_ptr<ICfg> stopTxnDataCapturePeriodicBool;
 public:
     MeteringConnector(Model& model, int connectorId, MeterStore& meterStore);
 

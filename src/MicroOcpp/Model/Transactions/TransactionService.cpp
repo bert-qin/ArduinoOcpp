@@ -50,6 +50,7 @@ std::unique_ptr<Ocpp201::Transaction> TransactionService::Evse::allocateTransact
     }
 
     tx->beginTimestamp = context.getModel().getClock().now();
+    tx->txNr = txNo++;
 
     return tx;
 }
@@ -228,6 +229,7 @@ void TransactionService::Evse::loop() {
                 }
                 if (evseId > 0) {
                     transaction->notifyEvseId = true;
+                    transaction->connectorId = evseId;
                 }
             }
 
@@ -400,6 +402,7 @@ bool TransactionService::Evse::beginAuthorization(IdToken idToken, bool validate
         }
         if (evseId > 0) {
             transaction->notifyEvseId = true;
+            transaction->connectorId = evseId;
         }
     }
 
@@ -644,6 +647,7 @@ void TransactionService::loop() {
                         (!evses[evseId].connectorPluggedInput || evses[evseId].connectorPluggedInput())) {
                     MO_DBG_INFO("assign tx to evse %u", evseId);
                     tx0->notifyEvseId = true;
+                    tx0->connectorId = evseId;
                     evses[evseId].transaction = std::move(tx0);
                 }
             }

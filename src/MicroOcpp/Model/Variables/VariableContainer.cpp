@@ -39,11 +39,11 @@ bool VariableContainerVolatile::save() {
     return true;
 }
 
-std::unique_ptr<Variable> VariableContainerVolatile::createVariable(Variable::InternalDataType dtype, Variable::AttributeTypeSet attributes) {
+std::shared_ptr<Variable> VariableContainerVolatile::createVariable(Variable::InternalDataType dtype, Variable::AttributeTypeSet attributes) {
     return makeVariable(dtype, attributes);
 }
 
-bool VariableContainerVolatile::add(std::unique_ptr<Variable> variable) {
+bool VariableContainerVolatile::add(std::shared_ptr<Variable> variable) {
     variables.push_back(std::move(variable));
     return true;
 }
@@ -56,11 +56,11 @@ Variable *VariableContainerVolatile::getVariable(size_t i) const {
     return variables[i].get();
 }
 
-Variable *VariableContainerVolatile::getVariable(const ComponentId& component, const char *variableName) const {
+std::shared_ptr<Variable> VariableContainerVolatile::getVariable(const ComponentId& component, const char *variableName) const {
     for (auto it = variables.begin(); it != variables.end(); it++) {
         if (!strcmp((*it)->getName(), variableName) &&
                 (*it)->getComponentId().equals(component)) {
-            return it->get();
+            return *it;
         }
     }
     return nullptr;

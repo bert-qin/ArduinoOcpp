@@ -65,13 +65,13 @@ private:
 
     VariableContainer *declareContainer(const char *filename, bool accessible);
 
-    Variable *getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, bool accessible);
+    std::shared_ptr<Variable> getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, bool accessible);
 
 public:
     VariableService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem);
 
     template <class T> 
-    Variable *declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath = MO_VARIABLE_FN, Variable::Mutability mutability = Variable::Mutability::ReadWrite, Variable::AttributeTypeSet attributes = Variable::AttributeTypeSet(), bool rebootRequired = false, bool accessible = true);
+    std::shared_ptr<Variable> declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath = MO_VARIABLE_FN, Variable::Mutability mutability = Variable::Mutability::ReadWrite, Variable::AttributeTypeSet attributes = Variable::AttributeTypeSet(), bool rebootRequired = false, bool accessible = true);
 
     bool commit();
 

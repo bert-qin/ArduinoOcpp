@@ -33,6 +33,8 @@ public:
         Context& context;
         TransactionService& txService;
         const unsigned int evseId;
+        // test
+        unsigned int txNo = 0;
         std::shared_ptr<Ocpp201::Transaction> transaction;
         Ocpp201::TransactionEventData::ChargingState trackChargingState = Ocpp201::TransactionEventData::ChargingState::UNDEFINED;
 
@@ -81,11 +83,11 @@ private:
     Context& context;
     std::vector<Evse> evses;
 
-    Variable *txStartPointString = nullptr;
-    Variable *txStopPointString = nullptr;
-    Variable *stopTxOnInvalidIdBool = nullptr;
-    Variable *stopTxOnEVSideDisconnectBool = nullptr;
-    Variable *evConnectionTimeOutInt = nullptr;
+    std::shared_ptr<Variable> txStartPointString = nullptr;
+    std::shared_ptr<Variable> txStopPointString = nullptr;
+    std::shared_ptr<Variable> stopTxOnInvalidIdBool = nullptr;
+    std::shared_ptr<Variable> stopTxOnEVSideDisconnectBool = nullptr;
+    std::shared_ptr<Variable> evConnectionTimeOutInt = nullptr;
     uint16_t trackTxStartPoint = -1;
     uint16_t trackTxStopPoint = -1;
     std::vector<TxStartStopPoint> txStartPointParsed;

@@ -34,6 +34,8 @@ TConfig convertType();
 class ICfg{
 public:
     virtual ~ICfg()=default;
+    virtual int getInt()=0;
+    virtual bool getBool()=0;
     virtual const char *getString()=0;
     virtual revision_t getValueRevision()=0;
 };

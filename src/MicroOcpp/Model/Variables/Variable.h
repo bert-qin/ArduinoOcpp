@@ -197,10 +197,12 @@ public:
     virtual bool setString(const char *val, AttributeType attrType = AttributeType::Actual);
 
     // get Value of Variable
-    virtual int getInt(AttributeType attrType = AttributeType::Actual);
-    virtual bool getBool(AttributeType attrType = AttributeType::Actual);
+    virtual int getInt(AttributeType attrType);
+    virtual bool getBool(AttributeType attrType);
     virtual const char *getString(AttributeType attrType); //always returns c-string (empty if undefined)
-    virtual const char *getString() override;
+    virtual int getInt() override {return getInt(AttributeType::Actual);};
+    virtual bool getBool() override {return getBool(AttributeType::Actual);};
+    virtual const char *getString() override {return getString(AttributeType::Actual);};
     revision_t getValueRevision() override;
 
     virtual InternalDataType getInternalDataType() = 0; //corresponds to MO internal value representation

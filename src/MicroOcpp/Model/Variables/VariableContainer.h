@@ -45,17 +45,17 @@ public:
      *         if dtype == InternalDataType::Int, then getInt() and setInt(...) are valid
      *         if dtype == InternalDataType::String, then getString() and setString(...) are valid. Etc.
      */
-    virtual std::unique_ptr<Variable> createVariable(Variable::InternalDataType dtype, Variable::AttributeTypeSet attributes) = 0; // factory method
-    virtual bool add(std::unique_ptr<Variable> variable) = 0;
+    virtual std::shared_ptr<Variable> createVariable(Variable::InternalDataType dtype, Variable::AttributeTypeSet attributes) = 0; // factory method
+    virtual bool add(std::shared_ptr<Variable> variable) = 0;
 
     virtual size_t size() const = 0;
     virtual Variable *getVariable(size_t i) const = 0;
-    virtual Variable *getVariable(const ComponentId& component, const char *variableName) const = 0;
+    virtual std::shared_ptr<Variable> getVariable(const ComponentId& component, const char *variableName) const = 0;
 };
 
 class VariableContainerVolatile : public VariableContainer {
 private:
-    std::vector<std::unique_ptr<Variable>> variables;
+    std::vector<std::shared_ptr<Variable>> variables;
 public:
     VariableContainerVolatile(const char *filename, bool accessible);
     ~VariableContainerVolatile();
@@ -63,11 +63,11 @@ public:
     //VariableContainer definitions
     bool load() override;
     bool save() override;
-    std::unique_ptr<Variable> createVariable(Variable::InternalDataType dtype, Variable::AttributeTypeSet attributes) override;
-    bool add(std::unique_ptr<Variable> config) override;
+    std::shared_ptr<Variable> createVariable(Variable::InternalDataType dtype, Variable::AttributeTypeSet attributes) override;
+    bool add(std::shared_ptr<Variable> config) override;
     size_t size() const override;
     Variable *getVariable(size_t i) const override;
-    Variable *getVariable(const ComponentId& component, const char *variableName) const override;
+    std::shared_ptr<Variable> getVariable(const ComponentId& component, const char *variableName) const override;
 };
 
 std::unique_ptr<VariableContainerVolatile> makeVariableContainerVolatile(const char *filename, bool accessible);

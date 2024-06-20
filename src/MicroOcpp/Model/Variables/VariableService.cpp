@@ -128,7 +128,7 @@ VariableContainer *VariableService::declareContainer(const char *filename, bool 
     return container.get();
 }
 
-Variable *VariableService::getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, bool accessible) {
+std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, bool accessible) {
     for (auto& container : containers) {
         if (auto variable = container->getVariable(component, name)) {
             if (variable->isDetached()) {
@@ -210,7 +210,7 @@ template<> Variable::InternalDataType getInternalDataType<bool>() {return Variab
 template<> Variable::InternalDataType getInternalDataType<const char*>() {return Variable::InternalDataType::String;}
 
 template<class T>
-Variable *VariableService::declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath, Variable::Mutability mutability, Variable::AttributeTypeSet attributes, bool rebootRequired, bool accessible) {
+std::shared_ptr<Variable> VariableService::declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath, Variable::Mutability mutability, Variable::AttributeTypeSet attributes, bool rebootRequired, bool accessible) {
 
     auto res = getVariable(getInternalDataType<T>(), component, name, accessible);
     if (!res) {
@@ -231,7 +231,7 @@ Variable *VariableService::declareVariable(const ComponentId& component, const c
             return nullptr;
         }
 
-        res = variable.get();
+        res = variable;
 
         if (!container->add(std::move(variable))) {
             return nullptr;
@@ -242,9 +242,9 @@ Variable *VariableService::declareVariable(const ComponentId& component, const c
     return res;
 }
 
-template Variable *VariableService::declareVariable<int>(const ComponentId&, const char*, int, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
-template Variable *VariableService::declareVariable<bool>(const ComponentId&, const char*, bool, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
-template Variable *VariableService::declareVariable<const char*>(const ComponentId&, const char*, const char*, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
+template std::shared_ptr<Variable> VariableService::declareVariable<int>(const ComponentId&, const char*, int, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
+template std::shared_ptr<Variable> VariableService::declareVariable<bool>(const ComponentId&, const char*, bool, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
+template std::shared_ptr<Variable> VariableService::declareVariable<const char*>(const ComponentId&, const char*, const char*, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
 
 bool VariableService::commit() {
     bool success = true;

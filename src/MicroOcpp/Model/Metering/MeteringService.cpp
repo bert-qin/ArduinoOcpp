@@ -17,10 +17,10 @@ MeteringService::MeteringService(Context& context, int numConn, std::shared_ptr<
       : context(context), meterStore(filesystem) {
 
     //set factory defaults for Metering-related config keys
-    declareConfiguration<const char*>("MeterValuesSampledData", "Energy.Active.Import.Register,Power.Active.Import");
-    declareConfiguration<const char*>("StopTxnSampledData", "");
-    declareConfiguration<const char*>("MeterValuesAlignedData", "Energy.Active.Import.Register,Power.Active.Import");
-    declareConfiguration<const char*>("StopTxnAlignedData", "");
+    // declareConfiguration<const char*>("MeterValuesSampledData", "Energy.Active.Import.Register,Power.Active.Import");
+    // declareConfiguration<const char*>("StopTxnSampledData", "");
+    // declareConfiguration<const char*>("MeterValuesAlignedData", "Energy.Active.Import.Register,Power.Active.Import");
+    // declareConfiguration<const char*>("StopTxnAlignedData", "");
     
     for (int i = 0; i < numConn; i++) {
         connectors.emplace_back(new MeteringConnector(context.getModel(), i, meterStore));

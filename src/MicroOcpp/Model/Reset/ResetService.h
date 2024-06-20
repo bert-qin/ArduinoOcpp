@@ -90,7 +90,7 @@ private:
     Evse *getEvse(unsigned int connectorId);
     Evse *getOrCreateEvse(unsigned int connectorId);
 
-    Variable *resetRetriesInt = nullptr;
+    std::shared_ptr<Variable> resetRetriesInt = nullptr;
 
 public:
     ResetService(Context& context);

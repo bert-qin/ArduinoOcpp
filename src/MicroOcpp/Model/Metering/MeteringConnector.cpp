@@ -11,6 +11,7 @@
 #include <MicroOcpp/Platform.h>
 #include <MicroOcpp/Debug.h>
 #include <MicroOcpp/Model/Transactions/TransactionService.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 
 #include <cstddef>
 #include <cinttypes>
@@ -20,24 +21,39 @@ using namespace MicroOcpp::Ocpp16;
 
 MeteringConnector::MeteringConnector(Model& model, int connectorId, MeterStore& meterStore)
         : model(model), connectorId{connectorId}, meterStore(meterStore) {
+    std::shared_ptr<ICfg> meterValuesSampledDataString;
+    std::shared_ptr<ICfg> stopTxnSampledDataString;
+    std::shared_ptr<ICfg> meterValuesAlignedDataString;
+    std::shared_ptr<ICfg> stopTxnAlignedDataString;
 
-    auto meterValuesSampledDataString = declareConfiguration<const char*>("MeterValuesSampledData", "");
-    declareConfiguration<int>("MeterValuesSampledDataMaxLength", 8, CONFIGURATION_VOLATILE, true);
-    meterValueCacheSizeInt = declareConfiguration<int>(MO_CONFIG_EXT_PREFIX "MeterValueCacheSize", 1);
-    meterValueSampleIntervalInt = declareConfiguration<int>("MeterValueSampleInterval", 60);
-    
-    auto stopTxnSampledDataString = declareConfiguration<const char*>("StopTxnSampledData", "");
-    declareConfiguration<int>("StopTxnSampledDataMaxLength", 8, CONFIGURATION_VOLATILE, true);
-    
-    auto meterValuesAlignedDataString = declareConfiguration<const char*>("MeterValuesAlignedData", "");
-    declareConfiguration<int>("MeterValuesAlignedDataMaxLength", 8, CONFIGURATION_VOLATILE, true);
-    clockAlignedDataIntervalInt  = declareConfiguration<int>("ClockAlignedDataInterval", 0);
-    
-    auto stopTxnAlignedDataString = declareConfiguration<const char*>("StopTxnAlignedData", "");
-
-    meterValuesInTxOnlyBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "MeterValuesInTxOnly", true);
-    stopTxnDataCapturePeriodicBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "StopTxnDataCapturePeriodic", false);
-
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        auto varService = model.getVariableService();
+        meterValuesSampledDataString = varService->declareVariable<const char*>("SampledDataCtrlr", "TxUpdatedMeasurands", "Energy.Active.Import.Register");
+        stopTxnSampledDataString = varService->declareVariable<const char*>("SampledDataCtrlr","StopTxnSampledData", "Energy.Active.Import.Register");
+        meterValueCacheSizeInt = varService->declareVariable<int>("CustomCtrlr","MeterValueCacheSize",1);
+        meterValueSampleIntervalInt = varService->declareVariable<int>("SampledDataCtrlr","TxUpdatedInterval",60);
+        meterValuesAlignedDataString = varService->declareVariable<const char*>("AlignedDataCtrlr", "Measurands", "Energy.Active.Import.Register");
+        clockAlignedDataIntervalInt = varService->declareVariable<int>("AlignedDataCtrlr","Interval",0);
+        stopTxnAlignedDataString = varService->declareVariable<const char*>("AlignedDataCtrlr", "TxEndedMeasurands", "Energy.Active.Import.Register");
+        meterValuesInTxOnlyBool = varService->declareVariable<bool>("CustomCtrlr","MeterValuesInTxOnly",true);
+        stopTxnDataCapturePeriodicBool = varService->declareVariable<bool>("CustomCtrlr","StopTxnDataCapturePeriodic",false);
+    }else
+#endif
+    {
+        meterValuesSampledDataString = declareConfiguration<const char*>("MeterValuesSampledData", "");
+        stopTxnSampledDataString = declareConfiguration<const char*>("StopTxnSampledData", "");
+        declareConfiguration<int>("MeterValuesSampledDataMaxLength", 8, CONFIGURATION_VOLATILE, true);
+        meterValueCacheSizeInt = declareConfiguration<int>(MO_CONFIG_EXT_PREFIX "MeterValueCacheSize", 1);
+        meterValueSampleIntervalInt = declareConfiguration<int>("MeterValueSampleInterval", 60);
+        declareConfiguration<int>("StopTxnSampledDataMaxLength", 8, CONFIGURATION_VOLATILE, true);
+        meterValuesAlignedDataString = declareConfiguration<const char*>("MeterValuesAlignedData", "");
+        declareConfiguration<int>("MeterValuesAlignedDataMaxLength", 8, CONFIGURATION_VOLATILE, true);
+        clockAlignedDataIntervalInt  = declareConfiguration<int>("ClockAlignedDataInterval", 0);
+        stopTxnAlignedDataString = declareConfiguration<const char*>("StopTxnAlignedData", "");
+        meterValuesInTxOnlyBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "MeterValuesInTxOnly", true);
+        stopTxnDataCapturePeriodicBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "StopTxnDataCapturePeriodic", false);
+    }
     sampledDataBuilder = std::unique_ptr<MeterValueBuilder>(new MeterValueBuilder(samplers, meterValuesSampledDataString));
     alignedDataBuilder = std::unique_ptr<MeterValueBuilder>(new MeterValueBuilder(samplers, meterValuesAlignedDataString));
     stopTxnSampledDataBuilder = std::unique_ptr<MeterValueBuilder>(new MeterValueBuilder(samplers, stopTxnSampledDataString));
