@@ -32,10 +32,13 @@ public:
     const char* getOperationType() override;
 
     void initiate(StoredOperationHandler *opStore) override;
+    bool restore(StoredOperationHandler *opStore) override;
 
     std::unique_ptr<DynamicJsonDocument> createReq() override;
 
     void processConf(JsonObject payload) override;
+    
+    bool processErr(const char *code, const char *description, JsonObject details) override;
 
     const char *getErrorCode() override {return errorCode;}
 

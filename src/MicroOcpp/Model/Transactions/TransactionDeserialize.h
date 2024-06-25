@@ -11,8 +11,8 @@
 
 namespace MicroOcpp {
 
-bool serializeTransaction(Transaction& tx, DynamicJsonDocument& out);
-bool deserializeTransaction(Transaction& tx, JsonObject in);
+bool serializeTransaction(ITransaction& tx, DynamicJsonDocument& out);
+bool deserializeTransaction(ITransaction& tx, JsonObject in);
 
 }
 

@@ -150,7 +150,7 @@ std::shared_ptr<MicroOcpp::ITransaction> beginTransaction(const char *idTag, uns
  * Begin the transaction process and skip the OCPP-side authorization. See beginTransaction(...) for a
  * complete description
  */
-std::shared_ptr<MicroOcpp::Transaction> beginTransaction_authorized(const char *idTag, const char *parentIdTag = nullptr, unsigned int connectorId = 1);
+std::shared_ptr<MicroOcpp::ITransaction> beginTransaction_authorized(const char *idTag, const char *parentIdTag = nullptr, unsigned int connectorId = 1);
 
 /*
  * End the transaction process if idTag is authorized to stop the transaction. The OCPP lib sends
@@ -237,7 +237,7 @@ const char *getTransactionIdTag(unsigned int connectorId = 1);
  *     bool deauthorized = tx->isIdTagDeauthorized(); //if StartTransaction has been rejected
  * }
  */
-std::shared_ptr<MicroOcpp::Transaction>& getTransaction(unsigned int connectorId = 1);
+std::shared_ptr<MicroOcpp::ITransaction>& getTransaction(unsigned int connectorId = 1);
 
 /* 
  * Returns if the OCPP library allows the EVSE to charge at the moment.
@@ -309,7 +309,7 @@ void setStartTxReadyInput(std::function<bool()> startTxReady, unsigned int conne
 
 void setStopTxReadyInput(std::function<bool()> stopTxReady, unsigned int connectorId = 1); //Input if charger is ready for StopTransaction
 
-void setTxNotificationOutput(std::function<void(MicroOcpp::Transaction*,MicroOcpp::TxNotification)> notificationOutput, unsigned int connectorId = 1); //called when transaction state changes (see TxNotification for possible events). Transaction can be null
+void setTxNotificationOutput(std::function<void(MicroOcpp::ITransaction*,MicroOcpp::TxNotification)> notificationOutput, unsigned int connectorId = 1); //called when transaction state changes (see TxNotification for possible events). Transaction can be null
 
 #if MO_ENABLE_CONNECTOR_LOCK
 /*

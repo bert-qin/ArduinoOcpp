@@ -21,7 +21,7 @@ namespace MicroOcpp {
 class Context;
 class Model;
 class Operation;
-class Transaction;
+class ITransaction;
 
 class Connector {
 private:
@@ -30,7 +30,7 @@ private:
     
     const int connectorId;
 
-    std::shared_ptr<Transaction> transaction;
+    std::shared_ptr<ITransaction> transaction;
 
     std::shared_ptr<Configuration> availabilityBool;
     char availabilityBoolKey [sizeof(MO_CONFIG_EXT_PREFIX "AVAIL_CONN_xxxx") + 1];
@@ -57,7 +57,7 @@ private:
     std::function<bool()> stopTxReadyInput; //the StopTx request will be delayed while this Input is false
     std::function<bool()> occupiedInput; //instead of Available, go into Preparing / Finishing state
 
-    std::function<void(Transaction*,TxNotification)> txNotificationOutput;
+    std::function<void(ITransaction*,TxNotification)> txNotificationOutput;
 
     std::shared_ptr<Configuration> connectionTimeOutInt; //in seconds
     std::shared_ptr<Configuration> stopTransactionOnInvalidIdBool;
@@ -90,8 +90,8 @@ public:
      * If the transaction process begins successfully, a Transaction object is returned
      * If no transaction process begins due to this call, nullptr is returned (e.g. memory allocation failed)
      */
-    std::shared_ptr<Transaction> beginTransaction(const char *idTag);
-    std::shared_ptr<Transaction> beginTransaction_authorized(const char *idTag, const char *parentIdTag = nullptr);
+    std::shared_ptr<ITransaction> beginTransaction(const char *idTag);
+    std::shared_ptr<ITransaction> beginTransaction_authorized(const char *idTag, const char *parentIdTag = nullptr);
 
     /*
      * End the current transaction process, if existing and not ended yet. This eventually leads to
@@ -101,10 +101,10 @@ public:
     void endTransaction(const char *idTag = nullptr, const char *reason = nullptr);
     void endTransaction_authorized(const char *idTag = nullptr, const char *reason = nullptr);
     
-    std::shared_ptr<Transaction>& getTransaction();
+    std::shared_ptr<ITransaction>& getTransaction();
 
     //create detached transaction - won't have any side-effects with the transaction handling of this lib
-    std::shared_ptr<Transaction> allocateTransaction(); 
+    std::shared_ptr<ITransaction> allocateTransaction(); 
 
     bool isOperative();
     void setAvailability(bool available);
@@ -130,7 +130,7 @@ public:
     void setStopTxReadyInput(std::function<bool()> stopTxReady);
     void setOccupiedInput(std::function<bool()> occupied);
 
-    void setTxNotificationOutput(std::function<void(Transaction*,TxNotification)> txNotificationOutput);
+    void setTxNotificationOutput(std::function<void(ITransaction*,TxNotification)> txNotificationOutput);
     void updateTxNotification(TxNotification event);
 };
 

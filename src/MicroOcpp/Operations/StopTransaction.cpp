@@ -15,12 +15,12 @@
 
 using MicroOcpp::Ocpp16::StopTransaction;
 
-StopTransaction::StopTransaction(Model& model, std::shared_ptr<Transaction> transaction)
+StopTransaction::StopTransaction(Model& model, std::shared_ptr<ITransaction> transaction)
         : model(model), transaction(transaction) {
 
 }
 
-StopTransaction::StopTransaction(Model& model, std::shared_ptr<Transaction> transaction, std::vector<std::unique_ptr<MicroOcpp::MeterValue>> transactionData)
+StopTransaction::StopTransaction(Model& model, std::shared_ptr<ITransaction> transaction, std::vector<std::unique_ptr<MicroOcpp::MeterValue>> transactionData)
         : model(model), transaction(transaction), transactionData(std::move(transactionData)) {
 
 }

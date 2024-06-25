@@ -4,12 +4,17 @@
 
 #include <MicroOcpp/Version.h>
 
+
 #if MO_ENABLE_V201
 
 #include <MicroOcpp/Operations/TransactionEvent.h>
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/Transactions/Transaction.h>
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Core/RequestStore.h>
+#include <MicroOcpp/Model/Authorization/AuthorizationService.h>
+#include <MicroOcpp/Model/Metering/MeteringService.h>
+#include <MicroOcpp/Model/Transactions/TransactionStore.h>
 
 using MicroOcpp::Ocpp201::TransactionEvent;
 using namespace MicroOcpp::Ocpp201;
@@ -24,34 +29,106 @@ const char* TransactionEvent::getOperationType() {
 }
 
 void TransactionEvent::initiate(StoredOperationHandler *opStore) {
-    if (!txEvent || !txEvent->transaction || !txEvent->transaction) {
+    if (!txEvent || !txEvent->transaction) {
         MO_DBG_ERR("initialization error");
         return;
     }
 
     auto transaction = txEvent->transaction;
+    bool needCommit = false;
 
     if (txEvent->eventType == TransactionEventData::Type::Started) {
-        if (transaction->started) {
+        if (transaction->getStartSync().isRequested()) {
             MO_DBG_ERR("initialization error");
             return;
         }
 
-        transaction->started = true;
-    }
-
-    if (txEvent->eventType == TransactionEventData::Type::Ended) {
-        if (transaction->stopped) {
+        transaction->getStartSync().setRequested();
+        needCommit = true;
+    }else if (txEvent->eventType == TransactionEventData::Type::Ended) {
+        if (transaction->getStopSync().isRequested()) {
             MO_DBG_ERR("initialization error");
             return;
         }
 
-        transaction->stopped = true;
+        transaction->getStopSync().setRequested();
+        needCommit = true;
+    }else{
+        // do nothing
     }
 
     //commit operation and tx
+    if(needCommit){
+        transaction->commit();
+        auto payload = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(2)));
+        (*payload)["connectorId"] = transaction->getConnectorId();
+        (*payload)["txNr"] = transaction->getTxNr();
+
+        if (opStore) {
+            opStore->setPayload(std::move(payload));
+            opStore->commit();
+        }
+    }
 
     MO_DBG_INFO("TransactionEvent initiated");
+}
+
+bool TransactionEvent::restore(StoredOperationHandler *opStore) {
+    if(txEvent->eventType != TransactionEventData::Type::Started && txEvent->eventType != TransactionEventData::Type::Ended){
+        return false;
+    }
+    if (!opStore) {
+        MO_DBG_ERR("invalid argument");
+        return false;
+    }
+
+    auto payload = opStore->getPayload();
+    if (!payload) {
+        MO_DBG_ERR("memory corruption");
+        return false;
+    }
+
+    int connectorId = (*payload)["connectorId"] | -1;
+    int txNr = (*payload)["txNr"] | -1;
+    if (connectorId < 0 || txNr < 0) {
+        MO_DBG_ERR("record incomplete");
+        return false;
+    }
+
+    auto txStore = model.getTransactionStore();
+
+    if (!txStore) {
+        MO_DBG_ERR("invalid state");
+        return false;
+    }
+    auto transaction = txEvent->transaction;
+    transaction = std::static_pointer_cast<Ocpp201::Transaction>(txStore->getTransaction(connectorId, txNr));
+    if (!transaction) {
+        MO_DBG_ERR("referential integrity violation");
+
+        //clean up possible tx records
+        if (auto mSerivce = model.getMeteringService()) {
+            mSerivce->removeTxMeterData(connectorId, txNr);
+        }
+        return false;
+    }
+
+    if (transaction->getStartTimestamp() < MIN_TIME &&
+            transaction->getStartBootNr() != model.getBootNr()) {
+        //time not set, cannot be restored anymore -> invalid tx
+        MO_DBG_ERR("cannot recover tx from previus run");
+
+        //clean up possible tx records
+        if (auto mSerivce = model.getMeteringService()) {
+            mSerivce->removeTxMeterData(connectorId, txNr);
+        }
+
+        transaction->setSilent();
+        transaction->setInactive();
+        transaction->commit();
+        return false;
+    }
+    return true;
 }
 
 std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
@@ -285,7 +362,6 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
             evse["connectorId"] = txEvent->evse.connectorId;
         }
     }
-
     if(txEvent->meterValue.size()){
         std::vector<std::unique_ptr<DynamicJsonDocument>> entries;
         for (auto value = txEvent->meterValue.begin(); value != txEvent->meterValue.end(); value++) {
@@ -310,10 +386,35 @@ void TransactionEvent::processConf(JsonObject payload) {
     if (payload.containsKey("idTokenInfo")) {
         if (strcmp(payload["idTokenInfo"]["status"], "Accepted")) {
             MO_DBG_INFO("transaction deAuthorized");
-            txEvent->transaction->active = false;
-            txEvent->transaction->isDeauthorized = true;
+            txEvent->transaction->setInactive();
+            txEvent->transaction->setIdTagDeauthorized();
         }
     }
+    if(txEvent->eventType == TransactionEventData::Type::Started){
+        txEvent->transaction->getStartSync().confirm();
+    }else if(txEvent->eventType == TransactionEventData::Type::Ended){
+        txEvent->transaction->getStopSync().confirm();
+    }else{
+        // do nothing
+    }
+    txEvent->transaction->commit();
+// #if MO_ENABLE_LOCAL_AUTH
+//     if (auto authService = model.getAuthorizationService()) {
+//         authService->notifyAuthorization(transaction->getIdTag(), payload["idTagInfo"]);
+//     }
+// #endif //MO_ENABLE_LOCAL_AUTH
+}
+
+bool TransactionEvent::processErr(const char *code, const char *description, JsonObject details) {
+
+    if (txEvent->transaction && txEvent->eventType == TransactionEventData::Type::Ended) {
+        txEvent->transaction->getStopSync().confirm(); //no retry behavior for now; consider data "arrived" at server
+        txEvent->transaction->commit();
+    }
+
+    MO_DBG_ERR("Server error, data loss!");
+
+    return false;
 }
 
 void TransactionEvent::processReq(JsonObject payload) {

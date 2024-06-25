@@ -13,17 +13,17 @@
 namespace MicroOcpp {
 
 class Model;
-class Transaction;
+class ITransaction;
 
 namespace Ocpp16 {
 
 class StartTransaction : public Operation {
 private:
     Model& model;
-    std::shared_ptr<Transaction> transaction;
+    std::shared_ptr<ITransaction> transaction;
 public:
 
-    StartTransaction(Model& model, std::shared_ptr<Transaction> transaction);
+    StartTransaction(Model& model, std::shared_ptr<ITransaction> transaction);
 
     ~StartTransaction();
 

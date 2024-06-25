@@ -17,10 +17,11 @@ using namespace MicroOcpp;
 
 #define MO_TXSTORE_META_FN MO_FILENAME_PREFIX "txstore.jsn"
 
-ConnectorTransactionStore::ConnectorTransactionStore(TransactionStore& context, unsigned int connectorId, std::shared_ptr<FilesystemAdapter> filesystem) :
+ConnectorTransactionStore::ConnectorTransactionStore(TransactionStore& context, unsigned int connectorId, std::shared_ptr<FilesystemAdapter> filesystem, const ProtocolVersion& version) :
         context(context),
         connectorId(connectorId),
-        filesystem(filesystem) {
+        filesystem(filesystem),
+        version(version) {
 
     snprintf(txBeginKey, sizeof(txBeginKey), MO_TXSTORE_TXBEGIN_KEY "%u", connectorId);
     txBeginInt = declareConfiguration<int>(txBeginKey, 0, MO_TXSTORE_META_FN, false, false, false);
@@ -38,7 +39,7 @@ ConnectorTransactionStore::~ConnectorTransactionStore() {
     }
 }
 
-std::shared_ptr<Transaction> ConnectorTransactionStore::getTransaction(unsigned int txNr) {
+std::shared_ptr<ITransaction> ConnectorTransactionStore::getTransaction(unsigned int txNr) {
 
     //check for most recent element of cache first because of temporal locality
     if (!transactions.empty()) {
@@ -92,7 +93,15 @@ std::shared_ptr<Transaction> ConnectorTransactionStore::getTransaction(unsigned 
         return nullptr;
     }
 
-    auto transaction = std::make_shared<Transaction>(*this, connectorId, txNr);
+    std::shared_ptr<ITransaction> transaction;
+#if MO_ENABLE_V201
+    if(version.major==2){
+        transaction = std::make_shared<Ocpp201::Transaction>(*this, connectorId, txNr);
+    }else
+#endif
+    {
+        transaction = std::make_shared<Transaction>(*this, connectorId, txNr);
+    }
     JsonObject txJson = doc->as<JsonObject>();
     if (!deserializeTransaction(*transaction, txJson)) {
         MO_DBG_ERR("deserialization error");
@@ -101,7 +110,7 @@ std::shared_ptr<Transaction> ConnectorTransactionStore::getTransaction(unsigned 
 
     //before adding new entry, clean cache
     transactions.erase(std::remove_if(transactions.begin(), transactions.end(),
-            [](std::weak_ptr<Transaction> tx) {
+            [](std::weak_ptr<ITransaction> tx) {
                 return tx.expired();
             }),
             transactions.end());
@@ -110,7 +119,7 @@ std::shared_ptr<Transaction> ConnectorTransactionStore::getTransaction(unsigned 
     return transaction;
 }
 
-std::shared_ptr<Transaction> ConnectorTransactionStore::createTransaction(bool silent) {
+std::shared_ptr<ITransaction> ConnectorTransactionStore::createTransaction(bool silent) {
     
     if (!txBeginInt || txBeginInt->getInt() < 0 || !txEndInt || txEndInt->getInt() < 0) {
         MO_DBG_ERR("memory corruption");
@@ -127,8 +136,15 @@ std::shared_ptr<Transaction> ConnectorTransactionStore::createTransaction(bool s
         }
         //special case: silent tx -> create tx anyway, but should be deleted immediately after charging session
     }
-
-    auto transaction = std::make_shared<Transaction>(*this, connectorId, (unsigned int) txEndInt->getInt(), silent);
+    std::shared_ptr<ITransaction> transaction;
+#if MO_ENABLE_V201
+    if(version.major==2){
+        transaction = std::make_shared<Ocpp201::Transaction>(*this, connectorId, (unsigned int) txEndInt->getInt(), silent);
+    }else
+#endif
+    {
+        transaction = std::make_shared<Transaction>(*this, connectorId, (unsigned int) txEndInt->getInt(), silent);
+    }
 
     txEndInt->setInt((txEndInt->getInt() + 1) % MAX_TX_CNT);
     configuration_save();
@@ -140,7 +156,7 @@ std::shared_ptr<Transaction> ConnectorTransactionStore::createTransaction(bool s
 
     //before adding new entry, clean cache
     transactions.erase(std::remove_if(transactions.begin(), transactions.end(),
-            [](std::weak_ptr<Transaction> tx) {
+            [](std::weak_ptr<ITransaction> tx) {
                 return tx.expired();
             }),
             transactions.end());
@@ -149,7 +165,7 @@ std::shared_ptr<Transaction> ConnectorTransactionStore::createTransaction(bool s
     return transaction;
 }
 
-std::shared_ptr<Transaction> ConnectorTransactionStore::getLatestTransaction() {
+std::shared_ptr<ITransaction> ConnectorTransactionStore::getLatestTransaction() {
     if (!txEndInt || txEndInt->getInt() < 0) {
         MO_DBG_ERR("memory corruption");
         return nullptr;
@@ -160,7 +176,7 @@ std::shared_ptr<Transaction> ConnectorTransactionStore::getLatestTransaction() {
     return getTransaction(latest);
 }
 
-bool ConnectorTransactionStore::commit(Transaction *transaction) {
+bool ConnectorTransactionStore::commit(ITransaction *transaction) {
 
     if (!filesystem) {
         MO_DBG_DEBUG("no FS: nothing to commit");
@@ -261,17 +277,17 @@ unsigned int ConnectorTransactionStore::size() {
     return (txEndInt->getInt() + MAX_TX_CNT - txBeginInt->getInt()) % MAX_TX_CNT;
 }
 
-TransactionStore::TransactionStore(unsigned int nConnectors, std::shared_ptr<FilesystemAdapter> filesystem) {
+TransactionStore::TransactionStore(unsigned int nConnectors, std::shared_ptr<FilesystemAdapter> filesystem, const ProtocolVersion& version) {
     
     for (unsigned int i = 0; i < nConnectors; i++) {
         connectors.push_back(std::unique_ptr<ConnectorTransactionStore>(
-            new ConnectorTransactionStore(*this, i, filesystem)));
+            new ConnectorTransactionStore(*this, i, filesystem, version)));
     }
 
     configuration_load(MO_TXSTORE_META_FN);
 }
 
-std::shared_ptr<Transaction> TransactionStore::getLatestTransaction(unsigned int connectorId) {
+std::shared_ptr<ITransaction> TransactionStore::getLatestTransaction(unsigned int connectorId) {
     if (connectorId >= connectors.size()) {
         MO_DBG_ERR("Invalid connectorId");
         return nullptr;
@@ -279,7 +295,7 @@ std::shared_ptr<Transaction> TransactionStore::getLatestTransaction(unsigned int
     return connectors[connectorId]->getLatestTransaction();
 }
 
-bool TransactionStore::commit(Transaction *transaction) {
+bool TransactionStore::commit(ITransaction *transaction) {
     if (!transaction) {
         MO_DBG_ERR("Invalid arg");
         return false;
@@ -292,7 +308,7 @@ bool TransactionStore::commit(Transaction *transaction) {
     return connectors[connectorId]->commit(transaction);
 }
 
-std::shared_ptr<Transaction> TransactionStore::getTransaction(unsigned int connectorId, unsigned int txNr) {
+std::shared_ptr<ITransaction> TransactionStore::getTransaction(unsigned int connectorId, unsigned int txNr) {
     if (connectorId >= connectors.size()) {
         MO_DBG_ERR("Invalid connectorId");
         return nullptr;
@@ -300,7 +316,7 @@ std::shared_ptr<Transaction> TransactionStore::getTransaction(unsigned int conne
     return connectors[connectorId]->getTransaction(txNr);
 }
 
-std::shared_ptr<Transaction> TransactionStore::createTransaction(unsigned int connectorId, bool silent) {
+std::shared_ptr<ITransaction> TransactionStore::createTransaction(unsigned int connectorId, bool silent) {
     if (connectorId >= connectors.size()) {
         MO_DBG_ERR("Invalid connectorId");
         return nullptr;

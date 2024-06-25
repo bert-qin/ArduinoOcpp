@@ -323,9 +323,9 @@ void DiagnosticsService::setDiagnosticsReader(std::function<size_t(char *buf, si
 
         Connector *connector0 = model.getConnector(0);
         Connector *connector1 = model.getConnector(1);
-        Transaction *connector1Tx = connector1 ? connector1->getTransaction().get() : nullptr;
+        ITransaction *connector1Tx = connector1 ? connector1->getTransaction().get() : nullptr;
         Connector *connector2 = model.getNumConnectors() > 2 ? model.getConnector(2) : nullptr;
-        Transaction *connector2Tx = connector2 ? connector2->getTransaction().get() : nullptr;
+        ITransaction *connector2Tx = connector2 ? connector2->getTransaction().get() : nullptr;
 
         ret = 0;
 

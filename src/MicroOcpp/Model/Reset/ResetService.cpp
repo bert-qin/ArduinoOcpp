@@ -148,7 +148,7 @@ void ResetService::Evse::loop() {
             if (txService && txService->getEvse(eId) && txService->getEvse(eId)->getTransaction()) {
                 auto tx = txService->getEvse(eId)->getTransaction();
 
-                if (!tx->stopped) {
+                if (!tx->getStopSync().isRequested()) {
                     // wait until tx stopped
                     return;
                 }
@@ -309,7 +309,7 @@ ResetStatus ResetService::initiateReset(ResetType type, unsigned int evseId) {
         auto txService = context.getModel().getTransactionService();
         if (txService && txService->getEvse(eId) && txService->getEvse(eId)->getTransaction()) {
             auto tx = txService->getEvse(eId)->getTransaction();
-            if (tx->active) {
+            if (tx->isActive()) {
                 //Tx in progress. Check behavior
                 if (type == ResetType_Immediate) {
                     txService->getEvse(eId)->abortTransaction(Transaction::StopReason::ImmediateReset, TransactionEventTriggerReason::ResetCommand);

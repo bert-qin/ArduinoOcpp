@@ -15,7 +15,7 @@
 using MicroOcpp::Ocpp16::StartTransaction;
 
 
-StartTransaction::StartTransaction(Model& model, std::shared_ptr<Transaction> transaction) : model(model), transaction(transaction) {
+StartTransaction::StartTransaction(Model& model, std::shared_ptr<ITransaction> transaction) : model(model), transaction(transaction) {
     
 }
 

@@ -491,7 +491,7 @@ const char *Connector::getErrorCode() {
     return nullptr;
 }
 
-std::shared_ptr<Transaction> Connector::allocateTransaction() {
+std::shared_ptr<ITransaction> Connector::allocateTransaction() {
 
     decltype(allocateTransaction()) tx;
 
@@ -589,7 +589,7 @@ std::shared_ptr<Transaction> Connector::allocateTransaction() {
     return tx;
 }
 
-std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
+std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
 
     if (transaction) {
         MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
@@ -809,7 +809,7 @@ std::shared_ptr<Transaction> Connector::beginTransaction(const char *idTag) {
     return transaction;
 }
 
-std::shared_ptr<Transaction> Connector::beginTransaction_authorized(const char *idTag, const char *parentIdTag) {
+std::shared_ptr<ITransaction> Connector::beginTransaction_authorized(const char *idTag, const char *parentIdTag) {
     
     if (transaction) {
         MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
@@ -955,7 +955,7 @@ void Connector::endTransaction_authorized(const char *idTag, const char *reason)
     transaction->commit();
 }
 
-std::shared_ptr<Transaction>& Connector::getTransaction() {
+std::shared_ptr<ITransaction>& Connector::getTransaction() {
     return transaction;
 }
 
@@ -969,40 +969,39 @@ bool Connector::isOperative() {
     }
 
     //check for running transaction(s) - if yes then the connector is always operative
-    if (connectorId == 0) {
-        for (unsigned int cId = 1; cId < model.getNumConnectors(); cId++) {
-            if (model.getConnector(cId)->getTransaction() && model.getConnector(cId)->getTransaction()->isRunning()) {
-                return true;
+    #if MO_ENABLE_V201
+    if (model.getVersion().major == 2) {
+        auto txService = model.getTransactionService();
+        if(txService){
+            if (connectorId == 0) {
+                for (unsigned int cId = 1; cId < model.getNumConnectors(); cId++) {
+                    if (txService->getEvse(cId)->getTransaction() &&
+                            txService->getEvse(cId)->getTransaction()->isRunning()) {
+                        return true;
+                    }
+                }
+            } else {
+                if (txService->getEvse(connectorId)->getTransaction() &&
+                        txService->getEvse(connectorId)->getTransaction()->isRunning()) {
+                    return true;
+                }
             }
         }
-    } else {
-        if (transaction && transaction->isRunning()) {
-            return true;
-        }
-    }
-
-    #if MO_ENABLE_V201
-    if (model.getVersion().major == 2 && model.getTransactionService()) {
-        auto txService = model.getTransactionService();
-
+    }else
+    #endif //MO_ENABLE_V201
+    {
         if (connectorId == 0) {
             for (unsigned int cId = 1; cId < model.getNumConnectors(); cId++) {
-                if (txService->getEvse(cId)->getTransaction() &&
-                        txService->getEvse(cId)->getTransaction()->started &&
-                        !txService->getEvse(cId)->getTransaction()->stopped) {
+                if (model.getConnector(cId)->getTransaction() && model.getConnector(cId)->getTransaction()->isRunning()) {
                     return true;
                 }
             }
         } else {
-            if (txService->getEvse(connectorId)->getTransaction() &&
-                    txService->getEvse(connectorId)->getTransaction()->started &&
-                    !txService->getEvse(connectorId)->getTransaction()->stopped) {
+            if (transaction && transaction->isRunning()) {
                 return true;
             }
         }
     }
-    #endif //MO_ENABLE_V201
-
     return availabilityVolatile && availabilityBool->getBool();
 }
 
@@ -1060,7 +1059,7 @@ void Connector::setOccupiedInput(std::function<bool()> occupied) {
     this->occupiedInput = occupied;
 }
 
-void Connector::setTxNotificationOutput(std::function<void(Transaction*, TxNotification)> txNotificationOutput) {
+void Connector::setTxNotificationOutput(std::function<void(ITransaction*, TxNotification)> txNotificationOutput) {
     this->txNotificationOutput = txNotificationOutput;
 }
 

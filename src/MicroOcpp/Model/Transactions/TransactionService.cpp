@@ -21,48 +21,144 @@
 #include <MicroOcpp/Core/SimpleRequestFactory.h>
 #include <MicroOcpp/Debug.h>
 #include <MicroOcpp/Model/Metering/MeteringService.h>
+#include <MicroOcpp/Model/Transactions/TransactionStore.h>
+#include <MicroOcpp/Model/Transactions/TransactionDefs.h>
+
+#ifndef MO_TX_CLEAN_ABORTED
+#define MO_TX_CLEAN_ABORTED 1
+#endif
 
 using namespace MicroOcpp;
 using namespace MicroOcpp::Ocpp201;
 
 TransactionService::Evse::Evse(Context& context, TransactionService& txService, unsigned int evseId) :
-        context(context), txService(txService), evseId(evseId) {
+        context(context), model(context.getModel()), txService(txService), evseId(evseId) {
+    //if the EVSE goes offline, can it continue to charge without sending StartTx / StopTx to the server when going online again?
+    silentOfflineTransactionsBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "SilentOfflineTransactions", false);
 
 }
 
-std::unique_ptr<Ocpp201::Transaction> TransactionService::Evse::allocateTransaction() {
-    auto tx =  std::unique_ptr<Ocpp201::Transaction>(new Ocpp201::Transaction());
-    if (!tx) {
-        // OOM
-        return nullptr;
+std::shared_ptr<Ocpp201::Transaction> TransactionService::Evse::allocateTransaction() {
+    decltype(allocateTransaction()) tx;
+
+    //clean possible aorted tx
+    auto txr = model.getTransactionStore()->getTxEnd(evseId);
+    auto txsize = model.getTransactionStore()->size(evseId);
+    for (decltype(txsize) i = 0; i < txsize; i++) {
+        txr = (txr + MAX_TX_CNT - 1) % MAX_TX_CNT; //decrement by 1
+        
+        auto tx = model.getTransactionStore()->getTransaction(evseId, txr);
+        //check if dangling silent tx, aborted tx, or corrupted entry (tx == null)
+        if (!tx || tx->isSilent() || (tx->isAborted() && MO_TX_CLEAN_ABORTED)) {
+            //yes, remove
+            bool removed = true;
+            if (auto mService = model.getMeteringService()) {
+                removed &= mService->removeTxMeterData(evseId, txr);
+            }
+            if (removed) {
+                removed &= model.getTransactionStore()->remove(evseId, txr);
+            }
+            if (removed) {
+                model.getTransactionStore()->setTxEnd(evseId, txr);
+                MO_DBG_WARN("deleted dangling silent or aborted tx for new transaction");
+            } else {
+                MO_DBG_ERR("memory corruption");
+                break;
+            }
+        } else {
+            //no, tx record trimmed, end
+            break;
+        }
     }
 
-    //simple clock-based hash
-    int v = context.getModel().getClock().now() - Timestamp(2020,0,0,0,0,0);
-    unsigned int h = v;
-    h += mocpp_tick_ms();
-    h *= 749572633U;
-    h %= 24593209U;
-    for (size_t i = 0; i < sizeof(tx->transactionId) - 3; i += 2) {
-        snprintf(tx->transactionId + i, 3, "%02X", (uint8_t)h);
+    //try to create new transaction
+    tx = std::static_pointer_cast<Ocpp201::Transaction>(model.getTransactionStore()->createTransaction(evseId));
+
+    if (!tx) {
+        //could not create transaction - now, try to replace tx history entry
+
+        auto txl = model.getTransactionStore()->getTxBegin(evseId);
+        auto txsize = model.getTransactionStore()->size(evseId);
+
+        for (decltype(txsize) i = 0; i < txsize; i++) {
+
+            if (tx) {
+                //success, finished here
+                break;
+            }
+
+            //no transaction allocated, delete history entry to make space
+
+            auto txhist = model.getTransactionStore()->getTransaction(evseId, txl);
+            //oldest entry, now check if it's history and can be removed or corrupted entry
+            if (!txhist || txhist->isCompleted() || txhist->isAborted()) {
+                //yes, remove
+                bool removed = true;
+                if (auto mService = model.getMeteringService()) {
+                    removed &= mService->removeTxMeterData(evseId, txl);
+                }
+                if (removed) {
+                    removed &= model.getTransactionStore()->remove(evseId, txl);
+                }
+                if (removed) {
+                    model.getTransactionStore()->setTxBegin(evseId, (txl + 1) % MAX_TX_CNT);
+                    MO_DBG_DEBUG("deleted tx history entry for new transaction");
+
+                    tx = std::static_pointer_cast<Ocpp201::Transaction>(model.getTransactionStore()->createTransaction(evseId));
+                } else {
+                    MO_DBG_ERR("memory corruption");
+                    break;
+                }
+            } else {
+                //no, end of history reached, don't delete further tx
+                MO_DBG_DEBUG("cannot delete more tx");
+                break;
+            }
+
+            txl++;
+            txl %= MAX_TX_CNT;
+        }
+    }
+
+    if (!tx) {
+        //couldn't create normal transaction -> check if to start charging without real transaction
+        if (silentOfflineTransactionsBool && silentOfflineTransactionsBool->getBool()) {
+            //try to handle charging session without sending StartTx or StopTx to the server
+            tx = std::static_pointer_cast<Ocpp201::Transaction>(model.getTransactionStore()->createTransaction(evseId,true));
+
+            if (tx) {
+                MO_DBG_DEBUG("created silent transaction");
+            }
+        }
+    }
+    if(tx){
+        //simple clock-based hash
+        int v = context.getModel().getClock().now() - Timestamp(2020,0,0,0,0,0);
+        unsigned int h = v;
+        h += mocpp_tick_ms();
         h *= 749572633U;
         h %= 24593209U;
+        char tmp[MO_TXID_LEN_MAX + 1];
+        for (size_t i = 0; i < MO_TXID_LEN_MAX + 1 - 3; i += 2) {
+            snprintf(tmp + i, 3, "%02X", (uint8_t)h);
+            h *= 749572633U;
+            h %= 24593209U;
+        }
+        tx->setTransactionIdStr(tmp);
+        tx->setBeginTimestamp(context.getModel().getClock().now());
     }
-
-    tx->beginTimestamp = context.getModel().getClock().now();
-    tx->txNr = txNo++;
 
     return tx;
 }
 
 void TransactionService::Evse::loop() {
 
-    if (transaction && !transaction->active && !transaction->started) {
+    if (transaction && !transaction->isActive() && !transaction->getStartSync().isRequested()) {
         MO_DBG_DEBUG("collect aborted transaction %u-%s", evseId, transaction->transactionId);
         transaction = nullptr;
     }
 
-    if (transaction && transaction->stopped) {
+    if (transaction && transaction->getStopSync().isRequested()) {
         MO_DBG_DEBUG("collect obsolete transaction %u-%s", evseId, transaction->transactionId);
         transaction = nullptr;
     }
@@ -75,15 +171,15 @@ void TransactionService::Evse::loop() {
                 transaction->evConnectionTimeoutListen = false;
             }
 
-            if (transaction->active &&
+            if (transaction->isActive() &&
                     transaction->evConnectionTimeoutListen &&
-                    transaction->beginTimestamp > MIN_TIME &&
+                    transaction->getBeginTimestamp() > MIN_TIME &&
                     txService.evConnectionTimeOutInt && txService.evConnectionTimeOutInt->getInt() > 0 &&
                     !connectorPluggedInput() &&
-                    context.getModel().getClock().now() - transaction->beginTimestamp >= txService.evConnectionTimeOutInt->getInt()) {
+                    context.getModel().getClock().now() - transaction->getBeginTimestamp() >= txService.evConnectionTimeOutInt->getInt()) {
 
                 MO_DBG_INFO("Session mngt: timeout");
-                transaction->active = false;
+                transaction->setInactive();
                 transaction->stopTrigger = TransactionEventTriggerReason::EVConnectTimeout;
                 transaction->stopReason = Ocpp201::Transaction::StopReason::Timeout;
             }
@@ -101,7 +197,7 @@ void TransactionService::Evse::loop() {
         TransactionEventTriggerReason triggerReason = TransactionEventTriggerReason::UNDEFINED;
         Ocpp201::Transaction::StopReason stopReason = Ocpp201::Transaction::StopReason::UNDEFINED;
 
-        if (transaction && !transaction->active) {
+        if (transaction && !transaction->isActive()) {
             // tx ended via endTransaction
             txStopCondition = true;
             triggerReason = transaction->stopTrigger;
@@ -109,13 +205,13 @@ void TransactionService::Evse::loop() {
         } else if ((txService.isTxStopPoint(TxStartStopPoint::EVConnected) ||
                     txService.isTxStopPoint(TxStartStopPoint::PowerPathClosed)) &&
                     connectorPluggedInput && !connectorPluggedInput() &&
-                    (txService.stopTxOnEVSideDisconnectBool->getBool() || !transaction || !transaction->started)) {
+                    (txService.stopTxOnEVSideDisconnectBool->getBool() || !transaction || !transaction->getStartSync().isRequested())) {
             txStopCondition = true;
             triggerReason = TransactionEventTriggerReason::EVCommunicationLost;
             stopReason = Ocpp201::Transaction::StopReason::EVDisconnected;
         } else if ((txService.isTxStopPoint(TxStartStopPoint::Authorized) ||
                     txService.isTxStopPoint(TxStartStopPoint::PowerPathClosed)) &&
-                    (!transaction || !transaction->isAuthorized)) {
+                    (!transaction || !transaction->isAuthorized())) {
             // user revoked authorization (or EV or any "local" entity)
             txStopCondition = true;
             triggerReason = TransactionEventTriggerReason::StopAuthorized;
@@ -133,7 +229,7 @@ void TransactionService::Evse::loop() {
             triggerReason = TransactionEventTriggerReason::ChargingStateChanged;
             stopReason = Ocpp201::Transaction::StopReason::Other;
         } else if (txService.isTxStopPoint(TxStartStopPoint::Authorized) &&
-                    transaction && transaction->isDeauthorized &&
+                    transaction && transaction->isIdTagDeauthorized() &&
                     txService.stopTxOnInvalidIdBool->getBool()) {
             // OCPP server rejected authorization
             txStopCondition = true;
@@ -142,16 +238,16 @@ void TransactionService::Evse::loop() {
         }
 
         if (txStopCondition &&
-                transaction && transaction->started && transaction->active) {
+                transaction && transaction->getStartSync().isRequested() && transaction->isActive()) {
 
             MO_DBG_INFO("Session mngt: TxStopPoint reached");
-            transaction->active = false;
+            transaction->setInactive();
             transaction->stopTrigger = triggerReason;
             transaction->stopReason = stopReason;
         }
 
         if (transaction &&
-                transaction->started && !transaction->stopped && !transaction->active &&
+                transaction->getStartSync().isRequested() && !transaction->getStopSync().isRequested() && !transaction->isActive() &&
                 (!stopTxReadyInput || stopTxReadyInput())) {
             // yes, stop running tx
 
@@ -189,7 +285,7 @@ void TransactionService::Evse::loop() {
         // tx should be started?
         if (txService.isTxStartPoint(TxStartStopPoint::PowerPathClosed) &&
                     (!connectorPluggedInput || connectorPluggedInput()) &&
-                    transaction && transaction->isAuthorized) {
+                    transaction && transaction->isAuthorized()) {
             txStartCondition = true;
             if (transaction->remoteStartId >= 0) {
                 triggerReason = TransactionEventTriggerReason::RemoteStart;
@@ -197,7 +293,7 @@ void TransactionService::Evse::loop() {
                 triggerReason = TransactionEventTriggerReason::Authorized;
             }
         } else if (txService.isTxStartPoint(TxStartStopPoint::Authorized) &&
-                    transaction && transaction->isAuthorized) {
+                    transaction && transaction->isAuthorized()) {
             txStartCondition = true;
             if (transaction->remoteStartId >= 0) {
                 triggerReason = TransactionEventTriggerReason::RemoteStart;
@@ -217,7 +313,7 @@ void TransactionService::Evse::loop() {
         }
 
         if (txStartCondition &&
-                (!transaction || (transaction->active && !transaction->started)) &&
+                (!transaction || (transaction->isActive() && !transaction->getStartSync().isRequested())) &&
                 (!startTxReadyInput || startTxReadyInput())) {
             // start tx
             
@@ -229,10 +325,18 @@ void TransactionService::Evse::loop() {
                 }
                 if (evseId > 0) {
                     transaction->notifyEvseId = true;
-                    transaction->connectorId = evseId;
+                    transaction->setConnectorId(evseId);
                 }
             }
 
+            if (transaction->isSilent()) {
+                MO_DBG_INFO("silent Transaction: omit StartTx");
+                transaction->getStartSync().setRequested();
+                transaction->getStartSync().confirm();
+                transaction->commit();
+                return;
+            }
+            
             txEvent = std::make_shared<TransactionEventData>(transaction, transaction->seqNoCounter++);
             if (!txEvent) {
                 // OOM
@@ -260,7 +364,7 @@ void TransactionService::Evse::loop() {
     TransactionEventData::ChargingState chargingState = TransactionEventData::ChargingState::Idle;
     if (connectorPluggedInput && !connectorPluggedInput()) {
         chargingState = TransactionEventData::ChargingState::Idle;
-    } else if (!transaction || !transaction->isAuthorized) {
+    } else if (!transaction || !transaction->isAuthorized()) {
         chargingState = TransactionEventData::ChargingState::EVConnected;
     } else if (evseReadyInput && !evseReadyInput()) { 
         chargingState = TransactionEventData::ChargingState::SuspendedEVSE;
@@ -284,7 +388,7 @@ void TransactionService::Evse::loop() {
             triggerReason = TransactionEventTriggerReason::ChargingStateChanged;
             transaction->notifyChargingState = true;
             trackChargingState = chargingState;
-        }else if (transaction->isAuthorized && !transaction->trackAuthorized) {
+        }else if (transaction->isAuthorized() && !transaction->trackAuthorized) {
             transaction->trackAuthorized = true;
             txUpdateCondition = true;
             if (transaction->remoteStartId >= 0) {
@@ -300,7 +404,7 @@ void TransactionService::Evse::loop() {
             transaction->trackEvConnected = false;
             txUpdateCondition = true;
             triggerReason = TransactionEventTriggerReason::EVCommunicationLost;
-        } else if (!transaction->isAuthorized && transaction->trackAuthorized) {
+        } else if (!transaction->isAuthorized() && transaction->trackAuthorized) {
             transaction->trackAuthorized = false;
             txUpdateCondition = true;
             triggerReason = TransactionEventTriggerReason::StopAuthorized;
@@ -325,7 +429,7 @@ void TransactionService::Evse::loop() {
             transaction->notifyMeterValue = true;
         }
 
-        if (txUpdateCondition && !txEvent && transaction->started && !transaction->stopped) {
+        if (txUpdateCondition && !txEvent && transaction->isRunning()) {
             // yes, updated
 
             txEvent = std::make_shared<TransactionEventData>(transaction, transaction->seqNoCounter++);
@@ -389,7 +493,7 @@ void TransactionService::Evse::setEvseReadyInput(std::function<bool()> connector
 bool TransactionService::Evse::beginAuthorization(IdToken idToken, bool validateIdToken) {
     MO_DBG_DEBUG("begin auth: %s", idToken.get());
 
-    if (transaction && (transaction->idToken.get() || !transaction->active)) {
+    if (transaction && (transaction->idToken.get() || !transaction->isActive())) {
         MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
         return false;
     }
@@ -402,12 +506,12 @@ bool TransactionService::Evse::beginAuthorization(IdToken idToken, bool validate
         }
         if (evseId > 0) {
             transaction->notifyEvseId = true;
-            transaction->connectorId = evseId;
+            transaction->setConnectorId(evseId);
         }
     }
 
     transaction->idToken = idToken;
-    transaction->beginTimestamp = context.getModel().getClock().now();
+    transaction->setBeginTimestamp(context.getModel().getClock().now());
 
     auto tx = transaction;
 
@@ -421,19 +525,19 @@ bool TransactionService::Evse::beginAuthorization(IdToken idToken, bool validate
         authorize->setOnReceiveConfListener([this, tx] (JsonObject response) {
             if (strcmp(response["idTokenInfo"]["status"] | "_Undefined", "Accepted")) {
                 MO_DBG_DEBUG("Authorize rejected (%s), abort tx process", tx->idToken.get());
-                tx->isDeauthorized = true;
+                tx->setIdTagDeauthorized();
                 return;
             }
 
             MO_DBG_DEBUG("Authorized tx with validation (%s)", tx->idToken.get());
-            tx->isAuthorized = true;
+            tx->setAuthorized();
             tx->notifyIdToken = true;
         });
         authorize->setTimeout(20 * 1000);
         context.initiateRequest(std::move(authorize));
     } else {
         MO_DBG_DEBUG("Authorized tx directly (%s)", tx->idToken.get());
-        tx->isAuthorized = true;
+        tx->setAuthorized();
         tx->notifyIdToken = true;
     }
 
@@ -441,7 +545,7 @@ bool TransactionService::Evse::beginAuthorization(IdToken idToken, bool validate
 }
 bool TransactionService::Evse::endAuthorization(IdToken idToken, bool validateIdToken) {
 
-    if (!transaction || !transaction->active) {
+    if (!transaction || !transaction->isActive()) {
         //transaction already ended / not active anymore
         return false;
     }
@@ -451,11 +555,11 @@ bool TransactionService::Evse::endAuthorization(IdToken idToken, bool validateId
     
     if (transaction->idToken.equals(idToken)) {
         // use same idToken like tx start
-        transaction->isAuthorized = false;
+        transaction->clearAuthorized();
         transaction->notifyIdToken = true;
     } else if (!validateIdToken) {
         transaction->stopIdToken = std::unique_ptr<IdToken>(new IdToken(idToken));
-        transaction->isAuthorized = false;
+        transaction->clearAuthorized();
         transaction->notifyStopIdToken = true;
     } else {
         // use a different idToken for stopping the tx
@@ -480,15 +584,15 @@ bool TransactionService::Evse::endAuthorization(IdToken idToken, bool validateId
             tx->stopIdToken = std::unique_ptr<IdToken>(new IdToken(idToken));
             if (!tx->stopIdToken) {
                 // OOM
-                if (tx->active) {
-                    tx->active = false;
+                if (tx->isActive()) {
+                    tx->setInactive();
                     tx->stopTrigger = TransactionEventTriggerReason::AbnormalCondition;
                     tx->stopReason = Ocpp201::Transaction::StopReason::Other;
                 }
                 return;
             }
 
-            tx->isAuthorized = false;
+            tx->clearAuthorized();
             tx->notifyStopIdToken = true;
         });
         authorize->setTimeout(20 * 1000);
@@ -499,7 +603,7 @@ bool TransactionService::Evse::endAuthorization(IdToken idToken, bool validateId
 }
 bool TransactionService::Evse::abortTransaction(Ocpp201::Transaction::StopReason stopReason, TransactionEventTriggerReason stopTrigger) {
 
-    if (!transaction || !transaction->active) {
+    if (!transaction || !transaction->isActive()) {
         //transaction already ended / not active anymore
         return false;
     }
@@ -507,7 +611,7 @@ bool TransactionService::Evse::abortTransaction(Ocpp201::Transaction::StopReason
     MO_DBG_DEBUG("Abort session started by idTag %s",
                             transaction->idToken.get());
 
-    transaction->active = false;
+    transaction->setInactive();
     transaction->stopTrigger = stopTrigger;
     transaction->stopReason = stopReason;
 
@@ -519,9 +623,9 @@ std::shared_ptr<MicroOcpp::Ocpp201::Transaction>& TransactionService::Evse::getT
 
 bool TransactionService::Evse::ocppPermitsCharge() {
     return transaction &&
-           transaction->active &&
-           transaction->isAuthorized &&
-           !transaction->isDeauthorized;
+           transaction->isActive() &&
+           transaction->isAuthorized() &&
+           !transaction->isIdTagDeauthorized();
 }
 
 bool TransactionService::isTxStartPoint(TxStartStopPoint check) {
@@ -641,13 +745,13 @@ void TransactionService::loop() {
     // assign tx on evseId 0 to an EVSE
     if (auto& tx0 = evses[0].getTransaction()) {
         //pending tx on evseId 0
-        if (tx0->active) {
+        if (tx0->isActive()) {
             for (unsigned int evseId = 1; evseId < MO_NUM_EVSE; evseId++) {
                 if (!evses[evseId].getTransaction() && 
                         (!evses[evseId].connectorPluggedInput || evses[evseId].connectorPluggedInput())) {
                     MO_DBG_INFO("assign tx to evse %u", evseId);
                     tx0->notifyEvseId = true;
-                    tx0->connectorId = evseId;
+                    tx0->setConnectorId(evseId);
                     evses[evseId].transaction = std::move(tx0);
                 }
             }

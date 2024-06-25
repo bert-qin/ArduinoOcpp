@@ -282,7 +282,7 @@ void mocpp_initialize(Connection& connection, const char *bootNotificationCreden
     auto& model = context->getModel();
 
     model.setTransactionStore(std::unique_ptr<TransactionStore>(
-        new TransactionStore(MO_NUMCONNECTORS, filesystem)));
+        new TransactionStore(MO_NUMCONNECTORS, filesystem,model.getVersion())));
     model.setBootService(std::unique_ptr<BootService>(
         new BootService(*context, filesystem)));
     model.setConnectorsCommon(std::unique_ptr<ConnectorsCommon>(
@@ -425,7 +425,7 @@ std::shared_ptr<ITransaction> beginTransaction(const char *idTag, unsigned int c
     if(context->getVersion().major==2){
         if (auto txService = context->getModel().getTransactionService()) {
             if (auto evse = txService->getEvse(connectorId)) {
-                if (!evse->getTransaction() || !evse->getTransaction()->isAuthorized) {
+                if (!evse->getTransaction() || !evse->getTransaction()->isAuthorized()) {
                     evse->beginAuthorization(idTag);
                 }
                 return evse->getTransaction();
@@ -447,7 +447,7 @@ std::shared_ptr<ITransaction> beginTransaction(const char *idTag, unsigned int c
     return connector->beginTransaction(idTag);
 }
 
-std::shared_ptr<Transaction> beginTransaction_authorized(const char *idTag, const char *parentIdTag, unsigned int connectorId) {
+std::shared_ptr<ITransaction> beginTransaction_authorized(const char *idTag, const char *parentIdTag, unsigned int connectorId) {
     if (!context) {
         MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
         return nullptr;
@@ -475,7 +475,7 @@ bool endTransaction(const char *idTag, const char *reason, unsigned int connecto
     if(context->getVersion().major==2){
         if (auto txService = context->getModel().getTransactionService()) {
             if (auto evse = txService->getEvse(connectorId)) {
-                if (evse->getTransaction() && evse->getTransaction()->isAuthorized) {
+                if (evse->getTransaction() && evse->getTransaction()->isAuthorized()) {
                     return evse->endAuthorization(idTag);
                 }
             }
@@ -571,9 +571,9 @@ const char *getTransactionIdTag(unsigned int connectorId) {
     return tx ? tx->getIdTag() : nullptr;
 }
 
-std::shared_ptr<Transaction> mocpp_undefinedTx;
+std::shared_ptr<ITransaction> mocpp_undefinedTx;
 
-std::shared_ptr<Transaction>& getTransaction(unsigned int connectorId) {
+std::shared_ptr<ITransaction>& getTransaction(unsigned int connectorId) {
     if (!context) {
         MO_DBG_WARN("OCPP uninitialized");
         return mocpp_undefinedTx;
@@ -925,7 +925,7 @@ void setStopTxReadyInput(std::function<bool()> stopTxReady, unsigned int connect
     connector->setStopTxReadyInput(stopTxReady);
 }
 
-void setTxNotificationOutput(std::function<void(MicroOcpp::Transaction*,MicroOcpp::TxNotification)> notificationOutput, unsigned int connectorId) {
+void setTxNotificationOutput(std::function<void(MicroOcpp::ITransaction*,MicroOcpp::TxNotification)> notificationOutput, unsigned int connectorId) {
     if (!context) {
         MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
         return;

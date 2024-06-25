@@ -29,7 +29,7 @@ bool deserializeSendStatus(SendStatus& status, JsonObject in) {
     return true;
 }
 
-bool serializeTransaction(Transaction& tx, DynamicJsonDocument& out) {
+bool serializeTransaction(ITransaction& tx, DynamicJsonDocument& out) {
     out = DynamicJsonDocument(1024);
     JsonObject state = out.to<JsonObject>();
 
@@ -114,7 +114,7 @@ bool serializeTransaction(Transaction& tx, DynamicJsonDocument& out) {
     return true;
 }
 
-bool deserializeTransaction(Transaction& tx, JsonObject state) {
+bool deserializeTransaction(ITransaction& tx, JsonObject state) {
 
     JsonObject sessionState = state["session"];
 

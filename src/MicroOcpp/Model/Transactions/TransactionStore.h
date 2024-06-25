@@ -27,6 +27,7 @@ class ConnectorTransactionStore {
 private:
     TransactionStore& context;
     const unsigned int connectorId;
+    const ProtocolVersion& version;
 
     std::shared_ptr<FilesystemAdapter> filesystem;
     std::shared_ptr<Configuration> txBeginInt; //if txNr < txBegin, tx has been safely deleted
@@ -35,21 +36,21 @@ private:
     std::shared_ptr<Configuration> txEndInt;
     char txEndKey [sizeof(MO_TXSTORE_TXEND_KEY "xxx") + 1];
     
-    std::deque<std::weak_ptr<Transaction>> transactions;
+    std::deque<std::weak_ptr<ITransaction>> transactions;
 
 public:
-    ConnectorTransactionStore(TransactionStore& context, unsigned int connectorId, std::shared_ptr<FilesystemAdapter> filesystem);
+    ConnectorTransactionStore(TransactionStore& context, unsigned int connectorId, std::shared_ptr<FilesystemAdapter> filesystem, const ProtocolVersion& version=VER_1_6_J);
     ConnectorTransactionStore(const ConnectorTransactionStore&) = delete;
     ConnectorTransactionStore(ConnectorTransactionStore&&) = delete;
     ConnectorTransactionStore& operator=(const ConnectorTransactionStore&) = delete;
 
     ~ConnectorTransactionStore();
     
-    std::shared_ptr<Transaction> getLatestTransaction();
-    bool commit(Transaction *transaction);
+    std::shared_ptr<ITransaction> getLatestTransaction();
+    bool commit(ITransaction *transaction);
 
-    std::shared_ptr<Transaction> getTransaction(unsigned int txNr);
-    std::shared_ptr<Transaction> createTransaction(bool silent = false);
+    std::shared_ptr<ITransaction> getTransaction(unsigned int txNr);
+    std::shared_ptr<ITransaction> createTransaction(bool silent = false);
 
     bool remove(unsigned int txNr);
 
@@ -65,13 +66,13 @@ class TransactionStore {
 private:
     std::vector<std::unique_ptr<ConnectorTransactionStore>> connectors;
 public:
-    TransactionStore(unsigned int nConnectors, std::shared_ptr<FilesystemAdapter> filesystem);
+    TransactionStore(unsigned int nConnectors, std::shared_ptr<FilesystemAdapter> filesystem, const ProtocolVersion& version=VER_1_6_J);
 
-    std::shared_ptr<Transaction> getLatestTransaction(unsigned int connectorId);
-    bool commit(Transaction *transaction);
+    std::shared_ptr<ITransaction> getLatestTransaction(unsigned int connectorId);
+    bool commit(ITransaction *transaction);
 
-    std::shared_ptr<Transaction> getTransaction(unsigned int connectorId, unsigned int txNr);
-    std::shared_ptr<Transaction> createTransaction(unsigned int connectorId, bool silent = false);
+    std::shared_ptr<ITransaction> getTransaction(unsigned int connectorId, unsigned int txNr);
+    std::shared_ptr<ITransaction> createTransaction(unsigned int connectorId, bool silent = false);
 
     bool remove(unsigned int connectorId, unsigned int txNr);
 

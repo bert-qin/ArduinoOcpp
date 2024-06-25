@@ -7,6 +7,10 @@
 
 using namespace MicroOcpp;
 
+bool ITransaction::commit() {
+    return context.commit(this);
+}
+
 bool Transaction::setIdTag(const char *idTag) {
     auto ret = snprintf(this->idTag, IDTAG_LEN_MAX + 1, "%s", idTag);
     return ret >= 0 && ret < IDTAG_LEN_MAX + 1;
@@ -27,65 +31,89 @@ bool Transaction::setStopReason(const char *reason) {
     return ret >= 0 && ret < REASON_LEN_MAX + 1;
 }
 
-bool Transaction::commit() {
-    return context.commit(this);
+#if MO_ENABLE_V201
+
+namespace MicroOcpp{
+namespace Ocpp201{
+    
+bool Transaction::setTransactionIdStr(const char* transactionId) {
+    auto ret = snprintf(this->transactionId, MO_TXID_LEN_MAX + 1, "%s", transactionId);
+    return ret >= 0 && ret < MO_TXID_LEN_MAX + 1;
 }
 
+void Transaction::sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue){
+    for(auto& i : meterValue){
+        if(i->getReadingContext()==ReadingContext::SampleClock){
+            clockMeterValue.push_back(std::move(i));
+        }else if(i->getReadingContext()==ReadingContext::SamplePeriodic){
+            periodicMeterValue.push_back(std::move(i));
+        }else if(i->getReadingContext()==ReadingContext::Trigger){
+            triggerMeterValue.push_back(std::move(i));
+        }else{
+            // do nothing
+        }
+    }
+};
+
+}
+}
+#endif
+
 int ocpp_tx_getTransactionId(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getTransactionId();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getTransactionId();
 }
 bool ocpp_tx_isAuthorized(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->isAuthorized();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->isAuthorized();
 }
 bool ocpp_tx_isIdTagDeauthorized(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->isIdTagDeauthorized();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->isIdTagDeauthorized();
 }
 
 bool ocpp_tx_isRunning(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->isRunning();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->isRunning();
 }
 bool ocpp_tx_isActive(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->isActive();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->isActive();
 }
 bool ocpp_tx_isAborted(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->isAborted();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->isAborted();
 }
 bool ocpp_tx_isCompleted(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->isCompleted();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->isCompleted();
 }
 
 const char *ocpp_tx_getIdTag(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getIdTag();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getIdTag();
 }
 
 bool ocpp_tx_getBeginTimestamp(OCPP_Transaction *tx, char *buf, size_t len) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getBeginTimestamp().toJsonString(buf, len);
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getBeginTimestamp().toJsonString(buf, len);
 }
 
 int32_t ocpp_tx_getMeterStart(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getMeterStart();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getMeterStart();
 }
 
 bool ocpp_tx_getStartTimestamp(OCPP_Transaction *tx, char *buf, size_t len) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getStartTimestamp().toJsonString(buf, len);
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getStartTimestamp().toJsonString(buf, len);
 }
 
 const char *ocpp_tx_getStopIdTag(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getStopIdTag();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getStopIdTag();
 }
 
 int32_t ocpp_tx_getMeterStop(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getMeterStop();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getMeterStop();
 }
 
 void ocpp_tx_setMeterStop(OCPP_Transaction* tx, int32_t meter) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->setMeterStop(meter);
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->setMeterStop(meter);
 }
 
 bool ocpp_tx_getStopTimestamp(OCPP_Transaction *tx, char *buf, size_t len) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getStopTimestamp().toJsonString(buf, len);
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getStopTimestamp().toJsonString(buf, len);
 }
 
 const char *ocpp_tx_getStopReason(OCPP_Transaction *tx) {
-    return reinterpret_cast<MicroOcpp::Transaction*>(tx)->getStopReason();
+    return reinterpret_cast<MicroOcpp::ITransaction*>(tx)->getStopReason();
 }

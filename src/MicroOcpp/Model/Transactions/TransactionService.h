@@ -15,6 +15,7 @@
 
 #include <MicroOcpp/Model/Transactions/Transaction.h>
 #include <MicroOcpp/Model/Transactions/TransactionDefs.h>
+#include <MicroOcpp/Model/Model.h>
 
 #include <memory>
 #include <functional>
@@ -31,10 +32,9 @@ public:
     class Evse {
     private:
         Context& context;
+        Model& model;
         TransactionService& txService;
         const unsigned int evseId;
-        // test
-        unsigned int txNo = 0;
         std::shared_ptr<Ocpp201::Transaction> transaction;
         Ocpp201::TransactionEventData::ChargingState trackChargingState = Ocpp201::TransactionEventData::ChargingState::UNDEFINED;
 
@@ -45,7 +45,8 @@ public:
         std::function<bool()> startTxReadyInput;
         std::function<bool()> stopTxReadyInput;
 
-        std::unique_ptr<Ocpp201::Transaction> allocateTransaction();
+        std::shared_ptr<Ocpp201::Transaction> allocateTransaction();
+        std::shared_ptr<Configuration> silentOfflineTransactionsBool;
     public:
         Evse(Context& context, TransactionService& txService, unsigned int evseId);
 

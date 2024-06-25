@@ -102,7 +102,7 @@ void SmartChargingConnector::calculateLimit(const Timestamp &t, ChargeRate& limi
 
 void SmartChargingConnector::trackTransaction() {
 
-    Transaction *tx = nullptr;
+    ITransaction *tx = nullptr;
     if (model.getConnector(connectorId)) {
         tx = model.getConnector(connectorId)->getTransaction().get();
     }

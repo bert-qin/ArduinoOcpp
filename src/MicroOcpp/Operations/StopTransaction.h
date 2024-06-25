@@ -17,20 +17,20 @@ class Model;
 class SampledValue;
 class MeterValue;
 
-class Transaction;
+class ITransaction;
 
 namespace Ocpp16 {
 
 class StopTransaction : public Operation {
 private:
     Model& model;
-    std::shared_ptr<Transaction> transaction;
+    std::shared_ptr<ITransaction> transaction;
     std::vector<std::unique_ptr<MeterValue>> transactionData;
 public:
 
-    StopTransaction(Model& model, std::shared_ptr<Transaction> transaction);
+    StopTransaction(Model& model, std::shared_ptr<ITransaction> transaction);
 
-    StopTransaction(Model& model, std::shared_ptr<Transaction> transaction, std::vector<std::unique_ptr<MicroOcpp::MeterValue>> transactionData);
+    StopTransaction(Model& model, std::shared_ptr<ITransaction> transaction, std::vector<std::unique_ptr<MicroOcpp::MeterValue>> transactionData);
 
     const char* getOperationType() override;
 

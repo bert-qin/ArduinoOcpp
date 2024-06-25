@@ -100,7 +100,7 @@ void RemoteStartTransaction::processReq(JsonObject payload) {
 
         if (success) {
             // bert modify
-            std::shared_ptr<Transaction> tx;
+            std::shared_ptr<ITransaction> tx;
             if(authorizeRemoteTxRequests && authorizeRemoteTxRequests->getBool()){
                 tx = selectConnector->beginTransaction(idTag);
             }else{
