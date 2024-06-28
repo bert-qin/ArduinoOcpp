@@ -399,12 +399,13 @@ void TransactionEvent::processConf(JsonObject payload) {
     }
     if(txEvent->eventType == TransactionEventData::Type::Started){
         txEvent->transaction->getStartSync().confirm();
+        txEvent->transaction->commit();
     }else if(txEvent->eventType == TransactionEventData::Type::Ended){
         txEvent->transaction->getStopSync().confirm();
+        txEvent->transaction->commit();
     }else{
         // do nothing
     }
-    txEvent->transaction->commit();
 }
 
 bool TransactionEvent::processErr(const char *code, const char *description, JsonObject details) {
