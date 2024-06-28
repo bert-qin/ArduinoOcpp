@@ -25,8 +25,8 @@ private:
     AuthorizationList localAuthorizationList;
     AuthorizationCache localAuthorizationCache;
 
-    std::shared_ptr<Configuration> localAuthListEnabledBool;
-    std::shared_ptr<Configuration> localAuthCacheEnabledBool;
+    std::shared_ptr<ICfg> localAuthListEnabledBool;
+    std::shared_ptr<ICfg> localAuthCacheEnabledBool;
 
 public:
     AuthorizationService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem);
@@ -46,6 +46,10 @@ public:
     bool clearAutchCache();
 
     void notifyAuthorization(const char *idTag, JsonObject idTagInfo);
+    Context& getContext() {return context;}
+#if MO_ENABLE_V201    
+    std::unique_ptr<DynamicJsonDocument> tokenToTagInfo(JsonObject token);
+#endif
 };
 
 }

@@ -9,6 +9,7 @@
 #include <MicroOcpp/Operations/SendLocalList.h>
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/Authorization/AuthorizationService.h>
+#include <MicroOcpp/Core/Context.h>
 
 using MicroOcpp::Ocpp16::SendLocalList;
 
@@ -25,7 +26,14 @@ const char* SendLocalList::getOperationType(){
 }
 
 void SendLocalList::processReq(JsonObject payload) {
-    if (!payload.containsKey("listVersion") || !payload.containsKey("updateType")) {
+    const char* verKey = "listVersion";
+#if MO_ENABLE_V201
+    if(authService.getContext().getVersion().major==2){
+        verKey = "versionNumber";
+    }
+#endif
+
+    if (!payload.containsKey(verKey) || !payload.containsKey("updateType")) {
         errorCode = "FormationViolation";
         return;
     }
@@ -53,7 +61,7 @@ void SendLocalList::processReq(JsonObject payload) {
 
     bool differential = !strcmp("Differential", payload["updateType"] | "Invalid"); //updateType Differential or Full
 
-    int listVersion = payload["listVersion"];
+    int listVersion = payload[verKey];
 
     if (differential && authService.getLocalListVersion() >= listVersion) {
         versionMismatch = true;

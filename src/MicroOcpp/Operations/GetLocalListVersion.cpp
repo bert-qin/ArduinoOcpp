@@ -28,10 +28,18 @@ void GetLocalListVersion::processReq(JsonObject payload) {
 std::unique_ptr<DynamicJsonDocument> GetLocalListVersion::createConf(){
     auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(1)));
     JsonObject payload = doc->to<JsonObject>();
+    const char* key = "listVersion";
+    int defVer = -1;
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        key = "versionNumber";
+        defVer = 0;
+    }
+#endif
     if (auto authService = model.getAuthorizationService()) {
-        payload["listVersion"] = authService->getLocalListVersion();
+        payload[key] = authService->getLocalListVersion();
     } else {
-        payload["listVersion"] = -1;
+        payload[key] = defVer;
     }
     return doc;
 }

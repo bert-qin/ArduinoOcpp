@@ -97,9 +97,9 @@ void Authorize::processConf(JsonObject payload){
         MO_DBG_INFO("Request has been denied. Reason: %s", idTagInfo);
     }
 
-    //if (model.getAuthorizationService()) {
-    //    model.getAuthorizationService()->notifyAuthorization(idTag, payload["idTagInfo"]);
-    //}
+    if (model.getAuthorizationService()) {
+       model.getAuthorizationService()->notifyAuthorization(idToken.get(), payload["idTokenInfo"]);
+    }
 }
 
 void Authorize::processReq(JsonObject payload){

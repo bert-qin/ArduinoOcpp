@@ -14,6 +14,7 @@
 namespace MicroOcpp {
 
 class AuthorizationService;
+class Context;
 
 namespace Ocpp16 {
 

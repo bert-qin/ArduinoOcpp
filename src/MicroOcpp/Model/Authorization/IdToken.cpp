@@ -64,7 +64,7 @@ bool IdToken::parseCstr(const char *token, const char *typeCstr) {
 }
 
 const char *IdToken::get() const {
-    return *idToken ? idToken : nullptr;;
+    return *idToken ? idToken : nullptr;
 }
 
 const char *IdToken::getTypeCstr() const {

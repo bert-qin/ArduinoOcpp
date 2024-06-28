@@ -280,7 +280,10 @@ void mocpp_initialize(Connection& connection, const char *bootNotificationCreden
 #endif //MO_ENABLE_MBEDTLS
 
     auto& model = context->getModel();
-
+#if MO_ENABLE_V201
+    model.setVariableService(std::unique_ptr<VariableService>(
+        new VariableService(*context, filesystem)));
+#endif
     model.setTransactionStore(std::unique_ptr<TransactionStore>(
         new TransactionStore(MO_NUMCONNECTORS, filesystem,model.getVersion())));
     model.setBootService(std::unique_ptr<BootService>(
@@ -294,7 +297,6 @@ void mocpp_initialize(Connection& connection, const char *bootNotificationCreden
     model.setConnectors(std::move(connectors));
     model.setHeartbeatService(std::unique_ptr<HeartbeatService>(
         new HeartbeatService(*context)));
-
 #if MO_ENABLE_LOCAL_AUTH
     model.setAuthorizationService(std::unique_ptr<AuthorizationService>(
         new AuthorizationService(*context, filesystem)));
@@ -306,8 +308,6 @@ void mocpp_initialize(Connection& connection, const char *bootNotificationCreden
 #endif
 
 #if MO_ENABLE_V201
-    model.setVariableService(std::unique_ptr<VariableService>(
-        new VariableService(*context, filesystem)));
     model.setTransactionService(std::unique_ptr<TransactionService>(
         new TransactionService(*context)));
 #endif

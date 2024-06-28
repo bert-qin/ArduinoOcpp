@@ -281,6 +281,7 @@ public:
     bool setTransactionIdStr(const char* transactionId) override;
 
     void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue) override;
+    const char *getIdTag() override {return idToken.get()?idToken.get():ITransaction::getIdTag();}
 // private:
     /*
      * Transaction substates. Notify server about any change when transaction is running

@@ -18,18 +18,30 @@
 #include <MicroOcpp/Operations/ClearCache.h>
 #include <MicroOcpp/Operations/StatusNotification.h>
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 
 #define MO_LOCALAUTHORIZATIONLIST_FN (MO_FILENAME_PREFIX "localauth.jsn")
-#define MO_LOCALAUTHORIZATIONCACHE_FN (MO_FILENAME_PREFIX "authcache.jsn")
-
+#define MO_LOCALAUTHORIZATIONCACHE_BFN "authcache.jsn"
+#define MO_LOCALAUTHORIZATIONCACHE_FN (MO_FILENAME_PREFIX MO_LOCALAUTHORIZATIONCACHE_BFN)
 using namespace MicroOcpp;
 
 AuthorizationService::AuthorizationService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem) : context(context), filesystem(filesystem) {
-    
-    localAuthListEnabledBool = declareConfiguration<bool>("LocalAuthListEnabled", true);
-    localAuthCacheEnabledBool = declareConfiguration<bool>("AuthorizationCacheEnabled", false);
-    declareConfiguration<int>("LocalAuthListMaxLength", MO_LocalAuthListMaxLength, CONFIGURATION_VOLATILE, true);
-    declareConfiguration<int>("SendLocalListMaxLength", MO_SendLocalListMaxLength, CONFIGURATION_VOLATILE, true);
+#if MO_ENABLE_V201
+    if(context.getVersion().major==2){
+        auto varService = context.getModel().getVariableService();
+        localAuthListEnabledBool = varService->declareVariable<bool>("LocalAuthListCtrlr", "LocalAuthListEnabled", true);
+        localAuthCacheEnabledBool = varService->declareVariable<bool>("AuthCtrlr", "AuthCacheEnabled", false);
+        varService->declareVariable<bool>("LocalAuthListCtrlr", "Available", true, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        varService->declareVariable<int>("LocalAuthListCtrlr", "ItemsPerMessage", MO_SendLocalListMaxLength, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        varService->declareVariable<int>("LocalAuthListCtrlr", "BytesPerMessage", 1024, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+    }else
+#endif
+    {
+        localAuthListEnabledBool = declareConfiguration<bool>("LocalAuthListEnabled", true);
+        localAuthCacheEnabledBool = declareConfiguration<bool>("AuthorizationCacheEnabled", false);
+        declareConfiguration<int>("LocalAuthListMaxLength", MO_LocalAuthListMaxLength, CONFIGURATION_VOLATILE, true);
+        declareConfiguration<int>("SendLocalListMaxLength", MO_SendLocalListMaxLength, CONFIGURATION_VOLATILE, true);
+    }
 
     if (!localAuthListEnabledBool || !localAuthCacheEnabledBool) {
         MO_DBG_ERR("initialization error");
@@ -141,12 +153,24 @@ size_t AuthorizationService::getAuthCacheSize() {
 }
 
 bool AuthorizationService::updateLocalList(JsonArray localAuthorizationListJson, int listVersion, bool differential) {
+    DynamicJsonDocument doc(0);
+#if MO_ENABLE_V201
+    doc = DynamicJsonDocument(localAuthorizationListJson.memoryUsage());
+    JsonArray array = doc.to<JsonArray>();
+    for (size_t i = 0; i < localAuthorizationListJson.size(); i++) {
+        JsonObject item = array.createNestedObject();
+        item["idTag"] = localAuthorizationListJson[i]["idToken"]["idToken"];
+        if(localAuthorizationListJson[i].containsKey("idTokenInfo")){
+            item["idTagInfo"] = tokenToTagInfo(localAuthorizationListJson[i]["idTokenInfo"])->as<JsonObject>();
+        }    
+    }
+    localAuthorizationListJson = array;
+#endif
     bool success = localAuthorizationList.readJson(localAuthorizationListJson, listVersion, differential, false);
 
     if (success) {
         
-        DynamicJsonDocument doc (
-                JSON_OBJECT_SIZE(3) +
+        doc = DynamicJsonDocument(JSON_OBJECT_SIZE(3) +
                 localAuthorizationList.getJsonCapacity());
 
         JsonObject root = doc.to<JsonObject>();
@@ -190,7 +214,7 @@ bool AuthorizationService::clearAutchCache() {
     localAuthorizationCache.clear();
 
     success = FilesystemUtils::remove_if(filesystem, [] (const char *fname) -> bool {
-        return !strncmp(fname, MO_LOCALAUTHORIZATIONCACHE_FN, strlen(fname));
+        return !strncmp(fname, MO_LOCALAUTHORIZATIONCACHE_BFN, strlen(fname));
     });
 
     if (!success) {
@@ -205,6 +229,12 @@ void AuthorizationService::notifyAuthorization(const char *idTag, JsonObject idT
     //check local list conflicts and also update authorization cache.
     if(!idTagInfo.isNull())
     {
+#if MO_ENABLE_V201
+        if(context.getVersion().major == 2){  
+            addAutchCache(idTag,tokenToTagInfo(idTagInfo)->as<JsonObject>());
+            return;
+        }
+#endif
         addAutchCache(idTag,idTagInfo);
     }
 
@@ -277,5 +307,20 @@ void AuthorizationService::notifyAuthorization(const char *idTag, JsonObject idT
         context.initiateRequest(std::move(statusNotification));
     }
 }
+
+#if MO_ENABLE_V201
+std::unique_ptr<DynamicJsonDocument> AuthorizationService::tokenToTagInfo(JsonObject token){
+    auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(token.memoryUsage()));
+    JsonObject root = doc->to<JsonObject>();
+    root["status"] = token["status"];
+    if(token.containsKey("groupIdToken")){
+        root["parentIdTag"] = token["groupIdToken"]["idToken"];
+    }
+    if(token.containsKey("cacheExpiryDateTime")){
+        root["expiryDate"] = token["cacheExpiryDateTime"];
+    }
+    return doc;
+}
+#endif
 
 #endif //MO_ENABLE_LOCAL_AUTH

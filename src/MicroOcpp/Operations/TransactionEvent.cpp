@@ -389,6 +389,13 @@ void TransactionEvent::processConf(JsonObject payload) {
             txEvent->transaction->setInactive();
             txEvent->transaction->setIdTagDeauthorized();
         }
+#if MO_ENABLE_LOCAL_AUTH
+        if(txEvent->eventType == TransactionEventData::Type::Started || txEvent->eventType == TransactionEventData::Type::Ended){
+            if (auto authService = model.getAuthorizationService()) {
+                authService->notifyAuthorization(txEvent->transaction->getIdTag(), payload["idTokenInfo"]);
+            }
+        }
+#endif //MO_ENABLE_LOCAL_AUTH
     }
     if(txEvent->eventType == TransactionEventData::Type::Started){
         txEvent->transaction->getStartSync().confirm();
@@ -398,11 +405,6 @@ void TransactionEvent::processConf(JsonObject payload) {
         // do nothing
     }
     txEvent->transaction->commit();
-// #if MO_ENABLE_LOCAL_AUTH
-//     if (auto authService = model.getAuthorizationService()) {
-//         authService->notifyAuthorization(transaction->getIdTag(), payload["idTagInfo"]);
-//     }
-// #endif //MO_ENABLE_LOCAL_AUTH
 }
 
 bool TransactionEvent::processErr(const char *code, const char *description, JsonObject details) {
