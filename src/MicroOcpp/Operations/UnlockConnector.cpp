@@ -17,8 +17,16 @@ const char* UnlockConnector::getOperationType(){
 }
 
 void UnlockConnector::processReq(JsonObject payload) {
-    
-    auto connectorId = payload["connectorId"] | -1;
+    int connectorId = -1;
+
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        connectorId = payload["evseId"] | -1;
+    }else
+#endif
+    {
+         connectorId = payload["connectorId"] | -1;
+    }
 
     auto connector = model.getConnector(connectorId);
 
@@ -49,6 +57,11 @@ void UnlockConnector::processReq(JsonObject payload) {
 std::unique_ptr<DynamicJsonDocument> UnlockConnector::createConf() {
 
     const char *status = "NotSupported";
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        status = "UnlockFailed";
+    }
+#endif
 
 #if MO_ENABLE_CONNECTOR_LOCK
     if (unlockConnector) {
