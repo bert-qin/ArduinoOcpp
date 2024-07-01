@@ -28,41 +28,82 @@ const char* ReserveNow::getOperationType(){
 }
 
 void ReserveNow::processReq(JsonObject payload) {
-    if (!payload.containsKey("connectorId") ||
-            payload["connectorId"] < 0 ||
-            !payload.containsKey("expiryDate") ||
-            !payload.containsKey("idTag") ||
+    const char* connectorIdKey = "connectorId";
+    const char* expiryDateKey = "expiryDate";
+    const char* idTagKey = "idTag";
+    const char* reserveIdKey = "reservationId";
+    int connectorId = -1;
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        connectorIdKey = "evseId";
+        expiryDateKey = "expiryDateTime";
+        idTagKey = "idToken";
+        reserveIdKey = "id";
+        if (payload[connectorIdKey]|0 < 0) {
+            errorCode = "FormationViolation";
+            return;
+        }
+        connectorId = payload[connectorIdKey] | 0;
+    }else
+#endif
+    {
+        if (!payload.containsKey(connectorIdKey) ||
+                payload[connectorIdKey] < 0) {
+            errorCode = "FormationViolation";
+            return;
+        }
+        connectorId = payload[connectorIdKey] | -1;
+    }
+
+    if (!payload.containsKey(expiryDateKey) ||
+            !payload.containsKey(idTagKey) ||
             //parentIdTag is optional
-            !payload.containsKey("reservationId")) {
+            !payload.containsKey(reserveIdKey)) {
         errorCode = "FormationViolation";
         return;
     }
 
-    int connectorId = payload["connectorId"] | -1;
     if (connectorId < 0 || (unsigned int) connectorId >= model.getNumConnectors()) {
         errorCode = "PropertyConstraintViolation";
         return;
     }
 
     Timestamp expiryDate;
-    if (!expiryDate.setTime(payload["expiryDate"])) {
+    if (!expiryDate.setTime(payload[expiryDateKey])) {
         MO_DBG_WARN("bad time format");
         errorCode = "PropertyConstraintViolation";
         return;
     }
 
-    const char *idTag = payload["idTag"] | "";
+const char *idTag = "";
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        idTag = payload[idTagKey][idTagKey] | "";
+    }else
+#endif
+    {
+        idTag = payload[idTagKey] | "";
+    }
     if (!*idTag) {
         errorCode = "PropertyConstraintViolation";
         return;
     }
 
     const char *parentIdTag = nullptr;
-    if (payload.containsKey("parentIdTag")) {
-        parentIdTag = payload["parentIdTag"];
+    #if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        if (payload.containsKey("groupIdToken")) {
+            parentIdTag = payload["groupIdToken"][idTagKey];
+        }
+    }else
+#endif
+    {
+        if (payload.containsKey("parentIdTag")) {
+            parentIdTag = payload["parentIdTag"];
+        }
     }
 
-    int reservationId = payload["reservationId"] | -1;
+    int reservationId = payload[reserveIdKey] | -1;
 
     if (model.getReservationService() &&
                 model.getNumConnectors() > 0) {
