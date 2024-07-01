@@ -24,6 +24,8 @@
 #include <ArduinoJson.h>
 
 #include <MicroOcpp/Core/Time.h>
+#include <MicroOcpp/Model/Transactions/TransactionDefs.h>
+
 
 namespace MicroOcpp {
 
@@ -108,6 +110,7 @@ class ChargingProfile {
 public:
     int chargingProfileId = -1;
     int transactionId = -1;
+    char transactionIdStr [MO_TXID_LEN_MAX + 1] = {'\0'};
     int stackLevel = 0;
     ChargingProfilePurposeType chargingProfilePurpose {ChargingProfilePurposeType::TxProfile};
     ChargingProfileKindType chargingProfileKind {ChargingProfileKindType::Relative}; //copied to ChargingSchedule to increase cohesion of limit algorithms
@@ -133,6 +136,8 @@ public:
 
     int getChargingProfileId();
     int getTransactionId();
+    const char* getTransactionIdStr();
+    bool setTransactionIdStr(const char* transactionId);
     int getStackLevel();
     
     ChargingProfilePurposeType getChargingProfilePurpose();
@@ -145,7 +150,7 @@ public:
     void printProfile();
 };
 
-std::unique_ptr<ChargingProfile> loadChargingProfile(JsonObject& json);
+std::unique_ptr<ChargingProfile> loadChargingProfile(JsonObject& json, const ProtocolVersion& version=VER_1_6_J);
 
 bool loadChargingSchedule(JsonObject& json, ChargingSchedule& out);
 

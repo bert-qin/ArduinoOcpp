@@ -453,7 +453,7 @@ bool SmartChargingService::loadProfiles() {
                 }
 
                 JsonObject profileJson = profileDoc->as<JsonObject>();
-                auto chargingProfile = loadChargingProfile(profileJson);
+                auto chargingProfile = loadChargingProfile(profileJson, context.getVersion());
 
                 bool valid = false;
                 if (chargingProfile) {

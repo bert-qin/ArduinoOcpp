@@ -18,8 +18,13 @@ const char* GetCompositeSchedule::getOperationType() {
 }
 
 void GetCompositeSchedule::processReq(JsonObject payload) {
-
-    connectorId = payload["connectorId"] | -1;
+    const char* idKey = "connectorId";
+#if MO_ENABLE_V201
+        if(model.getVersion().major==2){
+            idKey = "evseId";
+        }
+#endif
+    connectorId = payload[idKey] | -1;
     duration = payload["duration"] | 0;
 
     if (connectorId < 0 || !payload.containsKey("duration")) {
@@ -63,9 +68,20 @@ std::unique_ptr<DynamicJsonDocument> GetCompositeSchedule::createConf(){
                         chargingScheduleDoc.memoryUsage()));
         JsonObject payload = doc->to<JsonObject>();
         payload["status"] = "Accepted";
-        payload["connectorId"] = connectorId;
-        payload["scheduleStart"] = scheduleStart_str;
-        payload["chargingSchedule"] = chargingScheduleDoc;
+#if MO_ENABLE_V201
+        if(model.getVersion().major==2){
+            payload["schedule"] = chargingScheduleDoc;
+            payload["schedule"]["evseId"]=connectorId;
+            payload["schedule"]["scheduleStart"]=scheduleStart_str;
+            payload["schedule"].remove("startSchedule");
+            payload["schedule"].remove("minChargingRate");
+        }else
+#endif
+        {
+            payload["connectorId"] = connectorId;
+            payload["scheduleStart"] = scheduleStart_str;
+            payload["chargingSchedule"] = chargingScheduleDoc;
+        }
         return doc;
     } else {
         auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(1)));

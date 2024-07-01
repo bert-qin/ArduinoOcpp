@@ -5,6 +5,7 @@
 #include <MicroOcpp/Operations/ClearChargingProfile.h>
 #include <MicroOcpp/Model/SmartCharging/SmartChargingService.h>
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Core/Context.h>
 
 #include <functional>
 
@@ -20,45 +21,64 @@ const char* ClearChargingProfile::getOperationType(){
 
 void ClearChargingProfile::processReq(JsonObject payload) {
 
-    std::function<bool(int, int, ChargingProfilePurposeType, int)> filter = [payload]
+    std::function<bool(int, int, ChargingProfilePurposeType, int)> filter = [payload,this]
             (int chargingProfileId, int connectorId, ChargingProfilePurposeType chargingProfilePurpose, int stackLevel) {
-        
-        if (payload.containsKey("id")) {
-            if (chargingProfileId == (payload["id"] | -1)) {
+        const char* idKey = "id";
+        const char* connectorIdKey = "connectorId"; 
+
+#if MO_ENABLE_V201
+        if(scService.getContext().getVersion().major==2){
+            idKey = "chargingProfileId";
+            connectorIdKey = "evseId";
+        }
+#endif
+        if (payload.containsKey(idKey)) {
+            if (chargingProfileId == (payload[idKey] | -1)) {
                 return true;
             } else {
                 return false;
             }
         }
 
-        if (payload.containsKey("connectorId")) {
-            if (connectorId != (payload["connectorId"] | -1)) {
+        JsonObject criteria = payload;
+#if MO_ENABLE_V201
+        if(scService.getContext().getVersion().major==2){
+            if (payload.containsKey("chargingProfileCriteria")) {
+                criteria = payload["chargingProfileCriteria"];
+            }else{
+                return true;
+            }
+        }
+#endif
+
+        if (criteria.containsKey(connectorIdKey)) {
+            if (connectorId != (criteria[connectorIdKey] | -1)) {
                 return false;
             }
         }
 
-        if (payload.containsKey("chargingProfilePurpose")) {
+        if (criteria.containsKey("chargingProfilePurpose")) {
             switch (chargingProfilePurpose) {
                 case ChargingProfilePurposeType::ChargePointMaxProfile:
-                    if (strcmp(payload["chargingProfilePurpose"] | "INVALID", "ChargePointMaxProfile")) {
+                    if (strcmp(criteria["chargingProfilePurpose"] | "INVALID", "ChargePointMaxProfile")) {
                         return false;
                     }
                     break;
                 case ChargingProfilePurposeType::TxDefaultProfile:
-                    if (strcmp(payload["chargingProfilePurpose"] | "INVALID", "TxDefaultProfile")) {
+                    if (strcmp(criteria["chargingProfilePurpose"] | "INVALID", "TxDefaultProfile")) {
                         return false;
                     }
                     break;
                 case ChargingProfilePurposeType::TxProfile:
-                    if (strcmp(payload["chargingProfilePurpose"] | "INVALID", "TxProfile")) {
+                    if (strcmp(criteria["chargingProfilePurpose"] | "INVALID", "TxProfile")) {
                         return false;
                     }
                     break;
             }
         }
 
-        if (payload.containsKey("stackLevel")) {
-            if (stackLevel != (payload["stackLevel"] | -1)) {
+        if (criteria.containsKey("stackLevel")) {
+            if (stackLevel != (criteria["stackLevel"] | -1)) {
                 return false;
             }
         }

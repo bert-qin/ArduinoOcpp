@@ -6,6 +6,7 @@
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/SmartCharging/SmartChargingService.h>
 #include <MicroOcpp/Model/Transactions/Transaction.h>
+#include <MicroOcpp/Model/Transactions/TransactionService.h>
 #include <MicroOcpp/Debug.h>
 
 using MicroOcpp::Ocpp16::SetChargingProfile;
@@ -23,9 +24,16 @@ const char* SetChargingProfile::getOperationType(){
 }
 
 void SetChargingProfile::processReq(JsonObject payload) {
-
-    int connectorId = payload["connectorId"] | -1;
-    if (connectorId < 0 || !payload.containsKey("csChargingProfiles")) {
+    const char* idKey = "connectorId";
+    const char* profileKey = "csChargingProfiles";
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        idKey = "evseId";
+        profileKey = "chargingProfile";
+    }
+#endif
+    int connectorId = payload[idKey] | -1;
+    if (connectorId < 0 || !payload.containsKey(profileKey)) {
         errorCode = "FormationViolation";
         return;
     }
@@ -35,9 +43,9 @@ void SetChargingProfile::processReq(JsonObject payload) {
         return;
     }
 
-    JsonObject csChargingProfiles = payload["csChargingProfiles"];
+    JsonObject csChargingProfiles = payload[profileKey];
 
-    auto chargingProfile = loadChargingProfile(csChargingProfiles);
+    auto chargingProfile = loadChargingProfile(csChargingProfiles, model.getVersion());
     if (!chargingProfile) {
         errorCode = "PropertyConstraintViolation";
         errorDescription = "csChargingProfiles validation failed";
@@ -52,24 +60,42 @@ void SetChargingProfile::processReq(JsonObject payload) {
             errorDescription = "Cannot set TxProfile at connectorId 0";
             return;
         }
-        Connector *connector = model.getConnector(connectorId);
-        if (!connector) {
-            errorCode = "PropertyConstraintViolation";
-            return;
-        }
 
-        auto& transaction = connector->getTransaction();
-        if (!transaction || !connector->getTransaction()->isRunning()) {
+        std::shared_ptr<ITransaction> transaction = nullptr;
+#if MO_ENABLE_V201    
+        if(model.getVersion().major == 2){
+            if(model.getTransactionService() && model.getTransactionService()->getEvse(connectorId))
+            transaction = model.getTransactionService()->getEvse(connectorId)->getTransaction();
+        }
+        else
+#endif
+        {
+            if(model.getConnector(connectorId)){
+                transaction = model.getConnector(connectorId)->getTransaction();
+            }
+        }
+        if (!transaction || !transaction->isRunning()) {
             //no transaction running, reject profile
             accepted = false;
             return;
         }
+#if MO_ENABLE_V201    
+        if(model.getVersion().major == 2){
+            if (!chargingProfile->getTransactionIdStr()||strcmp(chargingProfile->getTransactionIdStr(),transaction->getTransactionIdStr())) {
+                //transactionId undefined / mismatch
+                accepted = false;
+                return;
+            }
+        }else
+#endif
+        {
+            if (chargingProfile->getTransactionId() < 0 ||
+                    chargingProfile->getTransactionId() != transaction->getTransactionId()) {
+                //transactionId undefined / mismatch
+                accepted = false;
+                return;
+            }
 
-        if (chargingProfile->getTransactionId() < 0 ||
-                chargingProfile->getTransactionId() != transaction->getTransactionId()) {
-            //transactionId undefined / mismatch
-            accepted = false;
-            return;
         }
 
         //seems good

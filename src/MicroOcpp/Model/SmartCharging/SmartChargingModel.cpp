@@ -197,6 +197,15 @@ int ChargingProfile::getTransactionId() {
     return transactionId;
 }
 
+const char* ChargingProfile::getTransactionIdStr() {
+    return transactionIdStr;
+}
+
+bool ChargingProfile::setTransactionIdStr(const char* transactionId) {
+    auto ret = snprintf(this->transactionIdStr, MO_TXID_LEN_MAX + 1, "%s", transactionId);
+    return ret >= 0 && ret < MO_TXID_LEN_MAX + 1;
+}
+
 int ChargingProfile::getStackLevel(){
     return stackLevel;
 }
@@ -352,22 +361,34 @@ bool loadChargingSchedulePeriod(JsonObject& json, ChargingSchedulePeriod& out) {
 
 } //end namespace MicroOcpp
 
-std::unique_ptr<ChargingProfile> MicroOcpp::loadChargingProfile(JsonObject& json) {
+std::unique_ptr<ChargingProfile> MicroOcpp::loadChargingProfile(JsonObject& json, const ProtocolVersion& version) {
     auto res = std::unique_ptr<ChargingProfile>(new ChargingProfile());
 
-    int chargingProfileId = json["chargingProfileId"] | -1;
+    const char* idKey = "chargingProfileId";
+#if MO_ENABLE_V201
+    if(version.major == 2){
+        idKey = "id";
+    }
+#endif
+    int chargingProfileId = json[idKey] | -1;
     if (chargingProfileId >= 0) {
         res->chargingProfileId = chargingProfileId;
     } else {
         MO_DBG_WARN("format violation");
         return nullptr;
     }
+#if MO_ENABLE_V201
+    if(version.major == 2){
+        res->setTransactionIdStr(json["transactionId"] | "");
+    }else
+#endif
+    {
+        int transactionId = json["transactionId"] | -1;
+        if (transactionId >= 0) {
+            res->transactionId = transactionId;
+        }
 
-    int transactionId = json["transactionId"] | -1;
-    if (transactionId >= 0) {
-        res->transactionId = transactionId;
     }
-
     int stackLevel = json["stackLevel"] | -1;
     if (stackLevel >= 0 && stackLevel <= MO_ChargeProfileMaxStackLevel) {
         res->stackLevel = stackLevel;
@@ -429,7 +450,15 @@ std::unique_ptr<ChargingProfile> MicroOcpp::loadChargingProfile(JsonObject& json
         res->validTo = MIN_TIME;
     }
 
-    JsonObject scheduleJson = json["chargingSchedule"];
+    JsonObject scheduleJson;
+#if MO_ENABLE_V201    
+    if(version.major == 2){
+        scheduleJson = json["chargingSchedule"][0];
+    }else
+#endif
+    {
+        scheduleJson = json["chargingSchedule"];
+    }
     ChargingSchedule& schedule = res->chargingSchedule;
     auto success = loadChargingSchedule(scheduleJson, schedule);
     if (!success) {

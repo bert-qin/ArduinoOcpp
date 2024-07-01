@@ -109,6 +109,7 @@ public:
     bool clearChargingProfile(std::function<bool(int, int, ChargingProfilePurposeType, int)> filter);
 
     std::unique_ptr<ChargingSchedule> getCompositeSchedule(unsigned int connectorId, int duration, ChargingRateUnitType_Optional unit = ChargingRateUnitType_Optional::None);
+    Context& getContext(){return context;}
 };
 
 //filesystem-related helper functions
