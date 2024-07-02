@@ -287,6 +287,7 @@ void TransactionService::Evse::loop() {
                     (!connectorPluggedInput || connectorPluggedInput()) &&
                     transaction && transaction->isAuthorized()) {
             txStartCondition = true;
+            transaction->trackAuthorized = true;
             if (transaction->remoteStartId >= 0) {
                 triggerReason = TransactionEventTriggerReason::RemoteStart;
             } else {
@@ -295,6 +296,7 @@ void TransactionService::Evse::loop() {
         } else if (txService.isTxStartPoint(TxStartStopPoint::Authorized) &&
                     transaction && transaction->isAuthorized()) {
             txStartCondition = true;
+            transaction->trackAuthorized = true;
             if (transaction->remoteStartId >= 0) {
                 triggerReason = TransactionEventTriggerReason::RemoteStart;
             } else {
