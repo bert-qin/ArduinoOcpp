@@ -25,6 +25,7 @@ namespace MicroOcpp {
 
 class Context;
 class Variable;
+class Connector;
 
 class TransactionService {
 public:
@@ -33,9 +34,9 @@ public:
     private:
         Context& context;
         Model& model;
+        Connector* connector;
         TransactionService& txService;
         const unsigned int evseId;
-        std::shared_ptr<Ocpp201::Transaction> transaction;
         Ocpp201::TransactionEventData::ChargingState trackChargingState = Ocpp201::TransactionEventData::ChargingState::UNDEFINED;
 
         std::function<bool()> connectorPluggedInput;
@@ -46,7 +47,6 @@ public:
         std::function<bool()> stopTxReadyInput;
 
         std::shared_ptr<Ocpp201::Transaction> allocateTransaction();
-        std::shared_ptr<Configuration> silentOfflineTransactionsBool;
     public:
         Evse(Context& context, TransactionService& txService, unsigned int evseId);
 
@@ -56,13 +56,14 @@ public:
         void setEvReadyInput(std::function<bool()> evRequestsEnergy);
         void setEvseReadyInput(std::function<bool()> connectorEnergized);
 
-        bool beginAuthorization(IdToken idToken, bool validateIdToken = true); // authorize by swipe RFID
+        bool beginAuthorization(IdToken idToken, IdToken groupIdToken = IdToken(), bool validateIdToken = true); // authorize by swipe RFID
         bool endAuthorization(IdToken idToken = IdToken(), bool validateIdToken = true); // stop authorization by swipe RFID
 
         // stop transaction, but neither upon user request nor OCPP server request (e.g. after PowerLoss)
         bool abortTransaction(Ocpp201::Transaction::StopReason stopReason = Ocpp201::Transaction::StopReason::Other, Ocpp201::TransactionEventTriggerReason stopTrigger = Ocpp201::TransactionEventTriggerReason::AbnormalCondition);
 
-        std::shared_ptr<Ocpp201::Transaction>& getTransaction();
+        std::shared_ptr<ITransaction>& getTransaction();
+        void setTransaction(std::shared_ptr<ITransaction> transaction);
 
         bool ocppPermitsCharge();
 

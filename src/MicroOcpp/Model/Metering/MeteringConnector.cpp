@@ -289,7 +289,7 @@ bool MeteringConnector::takeTriggeredTransactionEvent() {
     if (sample) {
         decltype(meterData) mv_now;
         mv_now.push_back(std::move(sample));
-        std::shared_ptr<Ocpp201::Transaction> transaction = nullptr;
+        std::shared_ptr<ITransaction> transaction = nullptr;
         if(model.getTransactionService() && model.getTransactionService()->getEvse(connectorId)){
             transaction = model.getTransactionService()->getEvse(connectorId)->getTransaction();
             if(transaction && transaction->isRunning()){

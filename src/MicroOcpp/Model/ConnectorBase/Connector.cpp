@@ -8,6 +8,7 @@
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Core/Request.h>
 #include <MicroOcpp/Model/Transactions/TransactionStore.h>
+#include <MicroOcpp/Model/Transactions/TransactionDefs.h>
 #include <MicroOcpp/Core/Configuration.h>
 
 #include <MicroOcpp/Operations/Authorize.h>
@@ -23,6 +24,7 @@
 #include <MicroOcpp/Model/Authorization/AuthorizationService.h>
 #include <MicroOcpp/Model/ConnectorBase/EvseId.h>
 #include <MicroOcpp/Model/Transactions/TransactionService.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 
 #include <MicroOcpp/Core/SimpleRequestFactory.h>
 #include <MicroOcpp/Core/Connection.h>
@@ -38,33 +40,51 @@ Connector::Connector(Context& context, int connectorId)
 
     snprintf(availabilityBoolKey, sizeof(availabilityBoolKey), MO_CONFIG_EXT_PREFIX "AVAIL_CONN_%d", connectorId);
     availabilityBool = declareConfiguration<bool>(availabilityBoolKey, true, MO_KEYVALUE_FN, false, false, false);
-
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        auto varService = model.getVariableService();
 #if MO_ENABLE_CONNECTOR_LOCK
-    declareConfiguration<bool>("UnlockConnectorOnEVSideDisconnect", true); //read-write
+        varService->declareVariable<bool>("OCPPCommCtrlr", "UnlockOnEVSideDisconnect", true); //read-write
 #else
-    declareConfiguration<bool>("UnlockConnectorOnEVSideDisconnect", false, CONFIGURATION_VOLATILE, true); //read-only because there is no connector lock
+        varService->declareVariable<bool>("OCPPCommCtrlr", "UnlockOnEVSideDisconnect", false, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly); //read-only because there is no connector lock
+#endif //MO_ENABLE_CONNECTOR_LOCK
+        localPreAuthorizeBool = varService->declareVariable<bool>("AuthCtrlr", "LocalPreAuthorize", false);
+        localAuthorizeOfflineBool = varService->declareVariable<bool>("AuthCtrlr", "LocalAuthorizeOffline", true);
+        allowOfflineTxForUnknownIdBool = varService->declareVariable<bool>("AuthCtrlr", "OfflineTxForUnknownIdEnabled", true);
+        silentOfflineTransactionsBool = varService->declareVariable<bool>("CustomCtrlr", "SilentOfflineTransactions", true);
+        authorizationTimeoutInt = varService->declareVariable<int>("CustomCtrlr", "AuthorizationTimeout", 20);
+        freeVendActiveBool = varService->declareVariable<bool>("CustomCtrlr", "FreeVendActive", false);
+        freeVendIdTagString = varService->declareVariable<const char*>("CustomCtrlr", "FreeVendIdTag", "");
+    }else
+#endif
+    {
+#if MO_ENABLE_CONNECTOR_LOCK
+        declareConfiguration<bool>("UnlockConnectorOnEVSideDisconnect", true); //read-write
+#else
+        declareConfiguration<bool>("UnlockConnectorOnEVSideDisconnect", false, CONFIGURATION_VOLATILE, true); //read-only because there is no connector lock
 #endif //MO_ENABLE_CONNECTOR_LOCK
 
-    connectionTimeOutInt = declareConfiguration<int>("ConnectionTimeOut", 30);
-    minimumStatusDurationInt = declareConfiguration<int>("MinimumStatusDuration", 0);
-    stopTransactionOnInvalidIdBool = declareConfiguration<bool>("StopTransactionOnInvalidId", true);
-    stopTransactionOnEVSideDisconnectBool = declareConfiguration<bool>("StopTransactionOnEVSideDisconnect", true);
-    localPreAuthorizeBool = declareConfiguration<bool>("LocalPreAuthorize", false);
-    localAuthorizeOfflineBool = declareConfiguration<bool>("LocalAuthorizeOffline", true);
-    allowOfflineTxForUnknownIdBool = MicroOcpp::declareConfiguration<bool>("AllowOfflineTxForUnknownId", false);
+        connectionTimeOutInt = declareConfiguration<int>("ConnectionTimeOut", 30);
+        minimumStatusDurationInt = declareConfiguration<int>("MinimumStatusDuration", 0);
+        stopTransactionOnInvalidIdBool = declareConfiguration<bool>("StopTransactionOnInvalidId", true);
+        stopTransactionOnEVSideDisconnectBool = declareConfiguration<bool>("StopTransactionOnEVSideDisconnect", true);
+        localPreAuthorizeBool = declareConfiguration<bool>("LocalPreAuthorize", false);
+        localAuthorizeOfflineBool = declareConfiguration<bool>("LocalAuthorizeOffline", true);
+        allowOfflineTxForUnknownIdBool = MicroOcpp::declareConfiguration<bool>("AllowOfflineTxForUnknownId", false);
 
-    //if the EVSE goes offline, can it continue to charge without sending StartTx / StopTx to the server when going online again?
-    silentOfflineTransactionsBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "SilentOfflineTransactions", false);
+        //if the EVSE goes offline, can it continue to charge without sending StartTx / StopTx to the server when going online again?
+        silentOfflineTransactionsBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "SilentOfflineTransactions", false);
 
-    //how long the EVSE tries the Authorize request before it enters offline mode
-    authorizationTimeoutInt = MicroOcpp::declareConfiguration<int>(MO_CONFIG_EXT_PREFIX "AuthorizationTimeout", 20);
+        //how long the EVSE tries the Authorize request before it enters offline mode
+        authorizationTimeoutInt = MicroOcpp::declareConfiguration<int>(MO_CONFIG_EXT_PREFIX "AuthorizationTimeout", 20);
 
-    //FreeVend mode
-    freeVendActiveBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "FreeVendActive", false);
-    freeVendIdTagString = declareConfiguration<const char*>(MO_CONFIG_EXT_PREFIX "FreeVendIdTag", "");
+        //FreeVend mode
+        freeVendActiveBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "FreeVendActive", false);
+        freeVendIdTagString = declareConfiguration<const char*>(MO_CONFIG_EXT_PREFIX "FreeVendIdTag", "");
 
-    txStartOnPowerPathClosedBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "TxStartOnPowerPathClosed", false);
+        txStartOnPowerPathClosedBool = declareConfiguration<bool>(MO_CONFIG_EXT_PREFIX "TxStartOnPowerPathClosed", false);
 
+    }
     if (!availabilityBool) {
         MO_DBG_ERR("Cannot declare availabilityBool");
     }
@@ -177,7 +197,7 @@ bool Connector::ocppPermitsCharge() {
     }
 
     // check charge permission depending on TxStartPoint
-    if (txStartOnPowerPathClosedBool && txStartOnPowerPathClosedBool->getBool()) {
+    if (model.getVersion().major==2 || (txStartOnPowerPathClosedBool && txStartOnPowerPathClosedBool->getBool())) {
         // tx starts when the power path is closed. Advertise charging before transaction
         return transaction &&
                 transaction->isActive() &&
@@ -231,7 +251,7 @@ void Connector::loop() {
         transaction = nullptr;
     }
 
-    if (transaction) { //begin exclusively transaction-related operations
+    if (model.getVersion().major==1 && transaction) { //begin exclusively transaction-related operations
             
         if (connectorPluggedInput) {
             if (transaction->isRunning() && transaction->isActive() && !connectorPluggedInput()) {
@@ -441,14 +461,14 @@ void Connector::loop() {
         MO_DBG_DEBUG("Status changed %s -> %s %s",
                 currentStatus == ChargePointStatus_UNDEFINED ? "" : cstrFromOcppEveState(currentStatus),
                 cstrFromOcppEveState(status),
-                minimumStatusDurationInt->getInt() ? " (will report delayed)" : "");
+                minimumStatusDurationInt && minimumStatusDurationInt->getInt() ? " (will report delayed)" : "");
         currentStatus = status;
         t_statusTransition = mocpp_tick_ms();
     }
 
     if (reportedStatus != currentStatus &&
             model.getClock().now() >= MIN_TIME &&
-            (minimumStatusDurationInt->getInt() <= 0 || //MinimumStatusDuration disabled
+            ((!minimumStatusDurationInt || minimumStatusDurationInt->getInt() <= 0) || //MinimumStatusDuration disabled
             mocpp_tick_ms() - t_statusTransition >= ((unsigned long) minimumStatusDurationInt->getInt()) * 1000UL)) {
         reportedStatus = currentStatus;
         Timestamp reportedTimestamp = model.getClock().now();
@@ -585,18 +605,47 @@ std::shared_ptr<ITransaction> Connector::allocateTransaction() {
             }
         }
     }
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        if(tx){
+            //simple clock-based hash
+            int v = context.getModel().getClock().now() - Timestamp(2020,0,0,0,0,0);
+            unsigned int h = v;
+            h += mocpp_tick_ms();
+            h *= 749572633U;
+            h %= 24593209U;
+            char tmp[MO_TXID_LEN_MAX + 1];
+            for (size_t i = 0; i < MO_TXID_LEN_MAX + 1 - 3; i += 2) {
+                snprintf(tmp + i, 3, "%02X", (uint8_t)h);
+                h *= 749572633U;
+                h %= 24593209U;
+            }
+            tx->setTransactionIdStr(tmp);
+            tx->setBeginTimestamp(model.getClock().now());
+        }
+    }
+#endif
 
     return tx;
 }
 
 std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
-
-    if (transaction) {
-        MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
-        return nullptr;
+#if MO_ENABLE_V201
+    if(model.getVersion().major==2){
+        if (transaction && (transaction->getIdTag() || !transaction->isActive())) {
+            MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
+            return nullptr;
+        }
+    }else
+#endif
+    {
+        if (transaction) {
+            MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
+            return nullptr;
+        }
     }
 
-    MO_DBG_DEBUG("Begin transaction process (%s), prepare", idTag != nullptr ? idTag : "");
+    MO_DBG_DEBUG("begin auth: (%s)", idTag != nullptr ? idTag : "");
     
     bool localAuthFound = false;
     const char *parentIdTag = nullptr; //locally stored parentIdTag
@@ -667,7 +716,9 @@ std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
     (void)parentIdTag;
     #endif //MO_ENABLE_RESERVATION
 
-    transaction = allocateTransaction();
+    if (!transaction){
+        transaction = allocateTransaction();
+    }
 
     if (!transaction) {
         MO_DBG_ERR("could not allocate Tx");
@@ -696,8 +747,15 @@ std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
         updateTxNotification(TxNotification::Authorized);
         return transaction;
     }
-
-    auto authorize = makeRequest(new Ocpp16::Authorize(context.getModel(), idTag));
+    std::unique_ptr<MicroOcpp::Request> authorize;
+#if MO_ENABLE_V201
+        if(model.getVersion().major == 2){
+            authorize = makeRequest(new Ocpp201::Authorize(context.getModel(), IdToken(idTag)));
+        }else
+#endif
+        {
+            authorize = makeRequest(new Ocpp16::Authorize(context.getModel(), idTag));
+        }
     authorize->setTimeout(authorizationTimeoutInt && authorizationTimeoutInt->getInt() > 0 ? authorizationTimeoutInt->getInt() * 1000UL : 20UL * 1000UL);
 
     if (!context.getConnection().isConnected()) {
@@ -707,7 +765,13 @@ std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
 
     auto tx = transaction;
     authorize->setOnReceiveConfListener([this, tx] (JsonObject response) {
-        JsonObject idTagInfo = response["idTagInfo"];
+    const char* idKey = "idTagInfo";
+#if MO_ENABLE_V201
+        if(model.getVersion().major == 2){
+            idKey = "idTokenInfo";
+        }
+#endif
+        JsonObject idTagInfo = response[idKey];
 
         if (strcmp("Accepted", idTagInfo["status"] | "UNDEFINED")) {
             //Authorization rejected, abort transaction
@@ -811,12 +875,23 @@ std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
 
 std::shared_ptr<ITransaction> Connector::beginTransaction_authorized(const char *idTag, const char *parentIdTag) {
     
-    if (transaction) {
-        MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
-        return nullptr;
+#if MO_ENABLE_V201
+    if(model.getVersion().major==2){
+        if (transaction && (transaction->getIdTag() || !transaction->isActive())) {
+            MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
+            return nullptr;
+        }
+    }else
+#endif
+    {
+        if (transaction) {
+            MO_DBG_WARN("tx process still running. Please call endTransaction(...) before");
+            return nullptr;
+        }
     }
-
-    transaction = allocateTransaction();
+    if (!transaction){
+        transaction = allocateTransaction();
+    }
 
     if (!transaction) {
         MO_DBG_ERR("could not allocate Tx");
@@ -852,15 +927,13 @@ std::shared_ptr<ITransaction> Connector::beginTransaction_authorized(const char 
 }
 
 void Connector::endTransaction(const char *idTag, const char *reason) {
-
     if (!transaction || !transaction->isActive()) {
         //transaction already ended / not active anymore
         return;
     }
-
     // bert add for parent idtag
-    if(idTag){
-        // idTag must be different ,check parent idTag only.
+    // idTag must be different ,check parent idTag only.
+    if(idTag && strcmp(idTag, transaction->getIdTag())){
         if(!transaction->getParentIdTag()){
             return;
         }
@@ -894,7 +967,15 @@ void Connector::endTransaction(const char *idTag, const char *reason) {
             return;
         }
 
-        auto authorize = makeRequest(new Ocpp16::Authorize(context.getModel(), idTag));
+        std::unique_ptr<MicroOcpp::Request> authorize;
+#if MO_ENABLE_V201
+        if(model.getVersion().major == 2){
+            authorize = makeRequest(new Ocpp201::Authorize(context.getModel(), IdToken(idTag)));
+        }else
+#endif
+        {
+            authorize = makeRequest(new Ocpp16::Authorize(context.getModel(), idTag));
+        }
         authorize->setTimeout(authorizationTimeoutInt && authorizationTimeoutInt->getInt() > 0 ? authorizationTimeoutInt->getInt() * 1000UL : 20UL * 1000UL);
 
         if (!context.getConnection().isConnected()) {
@@ -957,6 +1038,10 @@ void Connector::endTransaction_authorized(const char *idTag, const char *reason)
 
 std::shared_ptr<ITransaction>& Connector::getTransaction() {
     return transaction;
+}
+
+void Connector::setTransaction(std::shared_ptr<ITransaction> transaction){
+    this->transaction = transaction;
 }
 
 bool Connector::isOperative() {

@@ -45,7 +45,7 @@ private:
     const char *getErrorCode();
 
     ChargePointStatus currentStatus = ChargePointStatus_UNDEFINED;
-    std::shared_ptr<Configuration> minimumStatusDurationInt; //in seconds
+    std::shared_ptr<ICfg> minimumStatusDurationInt; //in seconds
     ChargePointStatus reportedStatus = ChargePointStatus_UNDEFINED;
     unsigned long t_statusTransition = 0;
 
@@ -59,20 +59,20 @@ private:
 
     std::function<void(ITransaction*,TxNotification)> txNotificationOutput;
 
-    std::shared_ptr<Configuration> connectionTimeOutInt; //in seconds
-    std::shared_ptr<Configuration> stopTransactionOnInvalidIdBool;
-    std::shared_ptr<Configuration> stopTransactionOnEVSideDisconnectBool;
-    std::shared_ptr<Configuration> localPreAuthorizeBool;
-    std::shared_ptr<Configuration> localAuthorizeOfflineBool;
-    std::shared_ptr<Configuration> allowOfflineTxForUnknownIdBool;
+    std::shared_ptr<ICfg> connectionTimeOutInt; //in seconds
+    std::shared_ptr<ICfg> stopTransactionOnInvalidIdBool;
+    std::shared_ptr<ICfg> stopTransactionOnEVSideDisconnectBool;
+    std::shared_ptr<ICfg> localPreAuthorizeBool;
+    std::shared_ptr<ICfg> localAuthorizeOfflineBool;
+    std::shared_ptr<ICfg> allowOfflineTxForUnknownIdBool;
 
-    std::shared_ptr<Configuration> silentOfflineTransactionsBool;
-    std::shared_ptr<Configuration> authorizationTimeoutInt; //in seconds
-    std::shared_ptr<Configuration> freeVendActiveBool;
-    std::shared_ptr<Configuration> freeVendIdTagString;
+    std::shared_ptr<ICfg> silentOfflineTransactionsBool;
+    std::shared_ptr<ICfg> authorizationTimeoutInt; //in seconds
+    std::shared_ptr<ICfg> freeVendActiveBool;
+    std::shared_ptr<ICfg> freeVendIdTagString;
     bool freeVendTrackPlugged = false;
 
-    std::shared_ptr<Configuration> txStartOnPowerPathClosedBool; // this postpones the tx start point to when evReadyInput becomes true
+    std::shared_ptr<ICfg> txStartOnPowerPathClosedBool; // this postpones the tx start point to when evReadyInput becomes true
 
     bool trackLoopExecute = false; //if loop has been executed once
 public:
@@ -102,6 +102,7 @@ public:
     void endTransaction_authorized(const char *idTag = nullptr, const char *reason = nullptr);
     
     std::shared_ptr<ITransaction>& getTransaction();
+    void setTransaction(std::shared_ptr<ITransaction> transaction);
 
     //create detached transaction - won't have any side-effects with the transaction handling of this lib
     std::shared_ptr<ITransaction> allocateTransaction(); 
