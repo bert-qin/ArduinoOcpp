@@ -24,7 +24,12 @@ const char* TriggerMessage::getOperationType(){
 void TriggerMessage::processReq(JsonObject payload) {
 
     const char *requestedMessage = payload["requestedMessage"] | "Invalid";
-    const int connectorId = payload["connectorId"] | -1;
+    const int connectorId = 
+    #if MO_ENABLE_V201
+            context.getVersion().major == 2 ?
+                payload["evse"]["id"] | -1 :
+#endif //MO_ENABLE_V201
+                payload["connectorId"] | -1;
 
     MO_DBG_INFO("Execute for message type %s, connectorId = %i", requestedMessage, connectorId);
 
@@ -80,12 +85,14 @@ void TriggerMessage::processReq(JsonObject payload) {
 
         for (auto i = cIdRangeBegin; i < cIdRangeEnd; i++) {
             auto connector = context.getModel().getConnector(i);
-
-            auto statusNotification = makeRequest(new Ocpp16::StatusNotification(
-                        i,
-                        connector->getStatus(), //will be determined in StatusNotification::initiate
-                        context.getModel().getClock().now()));
-
+            auto statusNotification = 
+#if MO_ENABLE_V201
+            context.getVersion().major == 2 ?
+                makeRequest(
+                    new Ocpp201::StatusNotification(i, connector->getStatus(), context.getModel().getClock().now())) :
+#endif //MO_ENABLE_V201
+                makeRequest(
+                    new Ocpp16::StatusNotification(i, connector->getStatus(), context.getModel().getClock().now()));
             statusNotification->setTimeout(60000);
 
             context.initiatePreBootOperation(std::move(statusNotification));
