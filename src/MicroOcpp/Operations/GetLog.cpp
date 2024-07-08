@@ -69,7 +69,7 @@ std::unique_ptr<DynamicJsonDocument> GetLog::createConf(){
     auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(capacity));
     JsonObject payload = doc->to<JsonObject>();
     payload["status"] = status;
-    payload["fileName"] = fileName;
+    payload["filename"] = fileName;
     return doc;
 }
 
