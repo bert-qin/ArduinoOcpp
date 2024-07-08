@@ -12,6 +12,7 @@
 #include <MicroOcpp/Model/ConnectorBase/Connector.h>
 #include <MicroOcpp/Platform.h>
 #include <MicroOcpp/Debug.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 
 using MicroOcpp::Ocpp16::ReserveNow;
 
@@ -110,7 +111,17 @@ const char *idTag = "";
         auto rService = model.getReservationService();
         auto chargePoint = model.getConnector(0);
 
-        auto reserveConnectorZeroSupportedBool = declareConfiguration<bool>("ReserveConnectorZeroSupported", true, CONFIGURATION_VOLATILE);
+        std::shared_ptr<ICfg> reserveConnectorZeroSupportedBool;
+#if MO_ENABLE_V201
+        if(model.getVersion().major == 2){
+            auto varService = model.getVariableService();
+            reserveConnectorZeroSupportedBool = varService->declareVariable<bool>("ReservationCtrlr", "NonEvseSpecific", true, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        }else
+#endif
+        {
+            reserveConnectorZeroSupportedBool  = declareConfiguration<bool>("ReserveConnectorZeroSupported", true, CONFIGURATION_VOLATILE);
+        }
+
         if (connectorId == 0 && (!reserveConnectorZeroSupportedBool || !reserveConnectorZeroSupportedBool->getBool())) {
             reservationStatus = "Rejected";
             return;
