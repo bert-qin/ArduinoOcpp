@@ -47,6 +47,8 @@ public:
 
     void notifyAuthorization(const char *idTag, JsonObject idTagInfo);
     Context& getContext() {return context;}
+    std::shared_ptr<FilesystemAdapter>& getFilesystem(){return filesystem;}
+    
 #if MO_ENABLE_V201    
     std::unique_ptr<DynamicJsonDocument> tokenToTagInfo(JsonObject token);
 #endif

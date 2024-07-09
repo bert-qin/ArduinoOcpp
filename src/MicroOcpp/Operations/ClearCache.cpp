@@ -4,6 +4,7 @@
 
 #include <MicroOcpp/Operations/ClearCache.h>
 #include <MicroOcpp/Model/Authorization/AuthorizationService.h>
+#include <MicroOcpp/Core/FilesystemUtils.h>
 #include <MicroOcpp/Debug.h>
 
 using MicroOcpp::Ocpp16::ClearCache;
@@ -18,16 +19,16 @@ const char* ClearCache::getOperationType(){
 
 void ClearCache::processReq(JsonObject payload) {
 
-    // if (!filesystem) {
-    //     //no persistency - nothing to do
-    //     return;
-    // }
+    if (!authService.getFilesystem()) {
+        //no persistency - nothing to do
+        return;
+    }
 
-    // success = FilesystemUtils::remove_if(filesystem, [] (const char *fname) -> bool {
-    //     return !strncmp(fname, "sd", strlen("sd")) ||
-    //            !strncmp(fname, "tx", strlen("tx")) ||
-    //            !strncmp(fname, "op", strlen("op"));
-    // });
+    FilesystemUtils::remove_if(authService.getFilesystem(), [] (const char *fname) -> bool {
+        return !strncmp(fname, "sd", strlen("sd")) ||
+               !strncmp(fname, "tx", strlen("tx")) ||
+               !strncmp(fname, "op", strlen("op"));
+    });
     success = authService.clearAutchCache();
 }
 
