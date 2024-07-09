@@ -107,7 +107,6 @@ std::shared_ptr<ITransaction> ConnectorTransactionStore::getTransaction(unsigned
         MO_DBG_ERR("deserialization error");
         return nullptr;
     }
-
     //before adding new entry, clean cache
     transactions.erase(std::remove_if(transactions.begin(), transactions.end(),
             [](std::weak_ptr<ITransaction> tx) {
