@@ -10,6 +10,7 @@
 
 #include <MicroOcpp/Operations/StartTransaction.h>
 #include <MicroOcpp/Operations/StopTransaction.h>
+#include <MicroOcpp/Operations/TransactionEvent.h>
 
 #include <MicroOcpp/Platform.h>
 #include <MicroOcpp/Debug.h>
@@ -313,12 +314,22 @@ bool Request::restore(std::unique_ptr<StoredOperationHandler> opStorage, Model *
 
     timeout_period = 0; //disable timeout by default for restored msgs
 
-    if (!strcmp(opType.c_str(), "StartTransaction") && model) { //TODO this will get a nicer solution
-        operation = std::unique_ptr<Operation>(new Ocpp16::StartTransaction(*model, nullptr));
-    } else if (!strcmp(opType.c_str(), "StopTransaction") && model) {
-        operation = std::unique_ptr<Operation>(new Ocpp16::StopTransaction(*model, nullptr));
+    if(model){
+#if MO_ENABLE_V201
+        if (model && model->getVersion().major==2) {
+            if (!strcmp(opType.c_str(), "TransactionEvent")){
+                operation = std::unique_ptr<Operation>(new Ocpp201::TransactionEvent(*model, nullptr));
+            }
+        }else
+#endif
+        {
+            if (!strcmp(opType.c_str(), "StartTransaction")) { //TODO this will get a nicer solution
+                operation = std::unique_ptr<Operation>(new Ocpp16::StartTransaction(*model, nullptr));
+            } else if (!strcmp(opType.c_str(), "StopTransaction")) {
+                operation = std::unique_ptr<Operation>(new Ocpp16::StopTransaction(*model, nullptr));
+            }
+        }
     }
-
     if (!operation) {
         MO_DBG_ERR("cannot create msg");
         return false;

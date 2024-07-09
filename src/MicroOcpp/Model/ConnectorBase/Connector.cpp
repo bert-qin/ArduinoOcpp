@@ -50,8 +50,8 @@ Connector::Connector(Context& context, int connectorId)
 #endif //MO_ENABLE_CONNECTOR_LOCK
         localPreAuthorizeBool = varService->declareVariable<bool>("AuthCtrlr", "LocalPreAuthorize", false);
         localAuthorizeOfflineBool = varService->declareVariable<bool>("AuthCtrlr", "LocalAuthorizeOffline", true);
-        allowOfflineTxForUnknownIdBool = varService->declareVariable<bool>("AuthCtrlr", "OfflineTxForUnknownIdEnabled", true);
-        silentOfflineTransactionsBool = varService->declareVariable<bool>("CustomCtrlr", "SilentOfflineTransactions", true);
+        allowOfflineTxForUnknownIdBool = varService->declareVariable<bool>("AuthCtrlr", "OfflineTxForUnknownIdEnabled", false);
+        silentOfflineTransactionsBool = varService->declareVariable<bool>("CustomCtrlr", "SilentOfflineTransactions", false);
         authorizationTimeoutInt = varService->declareVariable<int>("CustomCtrlr", "AuthorizationTimeout", 20);
         freeVendActiveBool = varService->declareVariable<bool>("CustomCtrlr", "FreeVendActive", false);
         freeVendIdTagString = varService->declareVariable<const char*>("CustomCtrlr", "FreeVendIdTag", "");
@@ -934,7 +934,7 @@ void Connector::endTransaction(const char *idTag, const char *reason) {
     // bert add for parent idtag
     // idTag must be different ,check parent idTag only.
     if(idTag && strcmp(idTag, transaction->getIdTag())){
-        if(!transaction->getParentIdTag()){
+        if(strlen(transaction->getParentIdTag())==0){
             return;
         }
         bool isParentIdTagMatch = false;

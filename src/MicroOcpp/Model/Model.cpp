@@ -75,16 +75,20 @@ void Model::loop() {
         reservationService->loop();
 #endif //MO_ENABLE_RESERVATION
 
-    if (resetService)
-        resetService->loop();
 
 #if MO_ENABLE_V201
-    if (transactionService)
-        transactionService->loop();
-    
-    if (resetServiceV201)
-        resetServiceV201->loop();
+    if(version.major==2){
+        if (transactionService)
+            transactionService->loop();
+        
+        if (resetServiceV201)
+            resetServiceV201->loop();
+    }else
 #endif
+    {
+        if (resetService)
+            resetService->loop();
+    }
 }
 
 void Model::setTransactionStore(std::unique_ptr<TransactionStore> ts) {

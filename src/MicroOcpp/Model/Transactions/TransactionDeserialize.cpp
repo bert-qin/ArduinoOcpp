@@ -78,6 +78,10 @@ bool serializeTransaction(ITransaction& tx, DynamicJsonDocument& out) {
         txStart["transactionId"] = tx.getTransactionId();
     }
 
+    if(strlen(tx.getTransactionIdStr())){
+        txStart["transactionIdStr"] = tx.getTransactionIdStr();
+    }
+
     JsonObject txStop = state.createNestedObject("stop");
 
     if (!serializeSendStatus(tx.getStopSync(), txStop)) {
@@ -100,6 +104,10 @@ bool serializeTransaction(ITransaction& tx, DynamicJsonDocument& out) {
 
     if (tx.getStopReason()[0] != '\0') {
         txStop["reason"] = tx.getStopReason();
+    }
+
+    if (tx.getSeqNo()) {
+        txStop["seqNo"] = tx.getSeqNo();
     }
 
     if (tx.isSilent()) {
@@ -187,6 +195,10 @@ bool deserializeTransaction(ITransaction& tx, JsonObject state) {
         tx.setTransactionId(txStart["transactionId"] | -1);
     }
 
+    if (txStart.containsKey("transactionIdStr")) {
+        tx.setTransactionIdStr(txStart["transactionIdStr"] | "");
+    }
+
     JsonObject txStop = state["stop"];
 
     if (!deserializeSendStatus(tx.getStopSync(), txStop)) {
@@ -229,6 +241,8 @@ bool deserializeTransaction(ITransaction& tx, JsonObject state) {
             return false;
         }
     }
+
+    tx.setSeqNo(txStop["seqNo"] | std::numeric_limits<unsigned int>::max()>>1);
 
     if (state["silent"] | false) {
         tx.setSilent();

@@ -60,9 +60,10 @@ void TransactionEvent::initiate(StoredOperationHandler *opStore) {
     //commit operation and tx
     if(needCommit){
         transaction->commit();
-        auto payload = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(2)));
+        auto payload = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(3)));
         (*payload)["connectorId"] = transaction->getConnectorId();
         (*payload)["txNr"] = transaction->getTxNr();
+        (*payload)["started"] = txEvent->eventType == TransactionEventData::Type::Started; // is started or ended event
 
         if (opStore) {
             opStore->setPayload(std::move(payload));
@@ -74,9 +75,6 @@ void TransactionEvent::initiate(StoredOperationHandler *opStore) {
 }
 
 bool TransactionEvent::restore(StoredOperationHandler *opStore) {
-    if(txEvent->eventType != TransactionEventData::Type::Started && txEvent->eventType != TransactionEventData::Type::Ended){
-        return false;
-    }
     if (!opStore) {
         MO_DBG_ERR("invalid argument");
         return false;
@@ -101,10 +99,20 @@ bool TransactionEvent::restore(StoredOperationHandler *opStore) {
         MO_DBG_ERR("invalid state");
         return false;
     }
-    auto transaction = txEvent->transaction;
-    transaction = std::static_pointer_cast<Ocpp201::Transaction>(txStore->getTransaction(connectorId, txNr));
+    auto transaction = std::static_pointer_cast<Ocpp201::Transaction>(txStore->getTransaction(connectorId, txNr));
     if (!transaction) {
         MO_DBG_ERR("referential integrity violation");
+
+        //clean up possible tx records
+        if (auto mSerivce = model.getMeteringService()) {
+            mSerivce->removeTxMeterData(connectorId, txNr);
+        }
+        return false;
+    }
+
+    if (transaction->isSilent()) {
+        //transaction has been set silent after initializing StopTx - discard operation record
+        MO_DBG_WARN("tx has been set silent - discard StopTx");
 
         //clean up possible tx records
         if (auto mSerivce = model.getMeteringService()) {
@@ -128,6 +136,34 @@ bool TransactionEvent::restore(StoredOperationHandler *opStore) {
         transaction->commit();
         return false;
     }
+    bool started = (*payload)["started"] | false;
+    txEvent = std::make_shared<TransactionEventData>(transaction, started?0:transaction->getSeqNo());
+    if(started){
+        txEvent->eventType = TransactionEventData::Type::Started;
+        txEvent->timestamp = transaction->getStartTimestamp();
+        txEvent->idToken = std::unique_ptr<IdToken>(new IdToken(transaction->idToken.get()));
+    }else{
+        txEvent->eventType = TransactionEventData::Type::Ended;
+        txEvent->timestamp = transaction->getStopTimestamp();
+        txEvent->idToken = std::unique_ptr<IdToken>(new IdToken(transaction->stopIdToken?transaction->stopIdToken->get():transaction->idToken.get()));
+    }
+    if (auto mSerivce = model.getMeteringService()) {
+        if (auto txData = mSerivce->getStopTxMeterData(transaction.get())) {
+            auto meterValue = txData->retrieveStopTxData();
+            if(started){
+                if(meterValue.size()>0){
+                    // only use transaction begin
+                    txEvent->meterValue.push_back(std::move(meterValue[0]));
+                }
+            }else{
+                txEvent->meterValue = std::move(meterValue);
+            }
+        }
+    }
+    txEvent->offline = true;
+    txEvent->triggerReason = TransactionEventTriggerReason::Trigger;
+    txEvent->evse = EvseId(transaction->getConnectorId(),1);
+
     return true;
 }
 
@@ -156,6 +192,52 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
 
     payload["eventType"] = eventType;
 
+    if(txEvent->eventType == TransactionEventData::Type::Started){
+        if (txEvent->transaction->getStartTimestamp() < MIN_TIME &&
+                txEvent->transaction->getStartBootNr() == model.getBootNr()) {
+            MO_DBG_DEBUG("adjust preboot StartTx timestamp");
+            Timestamp adjusted = model.getClock().adjustPrebootTimestamp(txEvent->transaction->getStartTimestamp());
+            txEvent->transaction->setStartTimestamp(adjusted);
+        }
+    }else if(txEvent->eventType == TransactionEventData::Type::Ended){
+            /*
+        * Adjust timestamps in case they were taken before initial Clock setting
+        */
+        if (txEvent->transaction->getStopTimestamp() < MIN_TIME) {
+            //Timestamp taken before Clock value defined. Determine timestamp
+            if (txEvent->transaction->getStopBootNr() == model.getBootNr()) {
+                //possible to calculate real timestamp
+                Timestamp adjusted = model.getClock().adjustPrebootTimestamp(txEvent->transaction->getStopTimestamp());
+                txEvent->transaction->setStopTimestamp(adjusted);
+            } else if (txEvent->transaction->getStartTimestamp() >= MIN_TIME) {
+                MO_DBG_WARN("set stopTime = startTime because correct time is not available");
+                txEvent->transaction->setStopTimestamp(txEvent->transaction->getStartTimestamp() + 1); //1s behind startTime to keep order in backend DB
+            } else {
+                MO_DBG_ERR("failed to determine StopTx timestamp");
+                //send invalid value
+            }
+        }
+        // if StopTx timestamp is before StartTx timestamp, something probably went wrong. Restore reasonable temporal order
+        if (txEvent->transaction->getStopTimestamp() < txEvent->transaction->getStartTimestamp()) {
+            MO_DBG_WARN("set stopTime = startTime because stopTime was before startTime");
+            txEvent->transaction->setStopTimestamp(txEvent->transaction->getStartTimestamp() + 1); //1s behind startTime to keep order in backend DB
+        }
+
+        for (auto mv = txEvent->meterValue.begin(); mv != txEvent->meterValue.end(); mv++) {
+            if ((*mv)->getTimestamp() < MIN_TIME) {
+                //time off. Try to adjust, otherwise send invalid value
+                if ((*mv)->getReadingContext() == ReadingContext::TransactionBegin) {
+                    (*mv)->setTimestamp(txEvent->transaction->getStartTimestamp());
+                } else if ((*mv)->getReadingContext() == ReadingContext::TransactionEnd) {
+                    (*mv)->setTimestamp(txEvent->transaction->getStopTimestamp());
+                } else {
+                    (*mv)->setTimestamp(txEvent->transaction->getStartTimestamp() + 1);
+                }
+            }
+        }
+    }else{
+        // do nothing
+    }
     char timestamp [JSONDATE_LENGTH + 1];
     txEvent->timestamp.toJsonString(timestamp, JSONDATE_LENGTH + 1);
     payload["timestamp"] = timestamp;

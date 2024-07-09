@@ -421,6 +421,11 @@ std::shared_ptr<ITransaction> beginTransaction(const char *idTag, unsigned int c
         MO_DBG_ERR("OCPP uninitialized"); //need to call mocpp_initialize before
         return nullptr;
     }
+    
+    if (!idTag || strnlen(idTag, IDTAG_LEN_MAX + 2) > IDTAG_LEN_MAX) {
+        MO_DBG_ERR("idTag format violation. Expect c-style string with at most %u characters", IDTAG_LEN_MAX);
+        return nullptr;
+    }
 #if MO_ENABLE_V201
     if(context->getVersion().major==2){
         if (auto txService = context->getModel().getTransactionService()) {
@@ -434,10 +439,6 @@ std::shared_ptr<ITransaction> beginTransaction(const char *idTag, unsigned int c
         return nullptr;
     }
 #endif
-    if (!idTag || strnlen(idTag, IDTAG_LEN_MAX + 2) > IDTAG_LEN_MAX) {
-        MO_DBG_ERR("idTag format violation. Expect c-style string with at most %u characters", IDTAG_LEN_MAX);
-        return nullptr;
-    }
     auto connector = context->getModel().getConnector(connectorId);
     if (!connector) {
         MO_DBG_ERR("could not find connector");

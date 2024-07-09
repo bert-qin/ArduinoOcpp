@@ -23,6 +23,7 @@
 #include <MicroOcpp/Model/Metering/MeteringService.h>
 #include <MicroOcpp/Model/Transactions/TransactionStore.h>
 #include <MicroOcpp/Model/Transactions/TransactionDefs.h>
+#include <MicroOcpp/Core/Connection.h>
 
 using namespace MicroOcpp;
 using namespace MicroOcpp::Ocpp201;
@@ -54,6 +55,8 @@ void TransactionService::Evse::loop() {
 
                 MO_DBG_INFO("Session mngt: timeout");
                 transaction->setInactive();
+                transaction->commit();
+                connector->updateTxNotification(TxNotification::ConnectionTimeout);
                 transaction->stopTrigger = TransactionEventTriggerReason::EVConnectTimeout;
                 transaction->stopReason = Ocpp201::Transaction::StopReason::Timeout;
             }
@@ -121,6 +124,27 @@ void TransactionService::Evse::loop() {
                 transaction->getStartSync().isRequested() && !transaction->getStopSync().isRequested() && !transaction->isActive() &&
                 (!stopTxReadyInput || stopTxReadyInput())) {
             // yes, stop running tx
+            if (transaction->isSilent()) {
+                MO_DBG_INFO("silent Transaction: omit StopTx");
+                connector->updateTxNotification(TxNotification::StopTx);
+                transaction->getStopSync().setRequested();
+                transaction->getStopSync().confirm();
+                if (auto mService = model.getMeteringService()) {
+                    mService->removeTxMeterData(evseId, transaction->getTxNr());
+                }
+                model.getTransactionStore()->remove(evseId, transaction->getTxNr());
+                model.getTransactionStore()->setTxEnd(evseId, transaction->getTxNr());
+                transaction = nullptr;
+                return;
+            }
+
+            if (transaction->getStopTimestamp() <= MIN_TIME) {
+                    transaction->setStopTimestamp(model.getClock().now());
+                    transaction->setStopBootNr(model.getBootNr());
+                }
+
+            transaction->commit();
+            connector->updateTxNotification(TxNotification::StopTx);
 
             txEvent = std::make_shared<TransactionEventData>(transaction, transaction->seqNoCounter++);
             if (!txEvent) {
@@ -201,6 +225,13 @@ void TransactionService::Evse::loop() {
             if (evseId > 0) {
                 transaction->setConnectorId(evseId);
             }
+            
+            if (transaction->getStartTimestamp() <= MIN_TIME) {
+                transaction->setStartTimestamp(model.getClock().now());
+                transaction->setStartBootNr(model.getBootNr());
+            }
+
+            connector->updateTxNotification(TxNotification::StartTx);
 
             if (transaction->isSilent()) {
                 MO_DBG_INFO("silent Transaction: omit StartTx");
@@ -209,7 +240,7 @@ void TransactionService::Evse::loop() {
                 transaction->commit();
                 return;
             }
-            
+            transaction->commit();
             txEvent = std::make_shared<TransactionEventData>(transaction, transaction->seqNoCounter++);
             if (!txEvent) {
                 // OOM
@@ -318,6 +349,7 @@ void TransactionService::Evse::loop() {
 
     if (txEvent) {
         txEvent->timestamp = context.getModel().getClock().now();
+        txEvent->offline = !context.getConnection().isConnected();
         if (transaction->notifyChargingState) {
             txEvent->chargingState = chargingState;
             transaction->notifyChargingState = false;
@@ -364,13 +396,14 @@ void TransactionService::Evse::setEvseReadyInput(std::function<bool()> connector
 }
 
 bool TransactionService::Evse::beginAuthorization(IdToken idToken, IdToken groupIdToken, bool validateIdToken) {
+    std::shared_ptr<ITransaction> transaction;
     if (validateIdToken) {
-        connector->beginTransaction(idToken.get());
+        transaction = connector->beginTransaction(idToken.get());
     } else {
-        connector->beginTransaction_authorized(idToken.get(),groupIdToken.get());
+        transaction = connector->beginTransaction_authorized(idToken.get(),groupIdToken.get());
     }
 
-    return true;
+    return transaction!=nullptr;
 }
 bool TransactionService::Evse::endAuthorization(IdToken idToken, bool validateIdToken) {
     auto transaction = std::static_pointer_cast<Ocpp201::Transaction>(connector->getTransaction()); 

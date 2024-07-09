@@ -92,7 +92,7 @@ public:
 
     // in ocpp2.0.1 is evseId
     virtual void setConnectorId(unsigned int connectorId) {this->connectorId = connectorId;}
-    unsigned int getConnectorId() {return connectorId;}
+    virtual unsigned int getConnectorId() {return connectorId;}
 
     void setTxNr(unsigned int txNr) {this->txNr = txNr;}
     unsigned int getTxNr() {return txNr;} //internal primary key of this tx object
@@ -130,6 +130,9 @@ public:
     virtual void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue){}
     virtual int getRemoteStartId() {return -1;}
     virtual void setRemoteStartId(int id) {}
+    virtual unsigned int getSeqNo() {return 0;}
+    virtual void setSeqNo(unsigned int seqNo) {}
+
 
 protected:
     ConnectorTransactionStore& context;
@@ -284,13 +287,15 @@ public:
 
     void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue) override;
     const char *getIdTag() override {return idToken.get()?idToken.get():ITransaction::getIdTag();}
-    bool setIdTag(const char *idTag) override {idToken = IdToken(idTag);}
-    void setConnectorId(unsigned int connectorId) {ITransaction::setConnectorId(connectorId);notifyEvseId=true;}
+    bool setIdTag(const char *idTag) override {idToken = IdToken(idTag);return true;}
+    void setConnectorId(unsigned int connectorId) override {ITransaction::setConnectorId(connectorId);notifyEvseId=true;}
     void setAuthorized() override {ITransaction::setAuthorized();notifyIdToken=true;}
     int getRemoteStartId() override {return remoteStartId;}
     void setRemoteStartId(int id) override {remoteStartId=id,notifyRemoteStartId=true;}
     bool setStopIdTag(const char *idTag) override;
     const char *getStopIdTag() override;
+    unsigned int getSeqNo() override {return seqNoCounter;}
+    void setSeqNo(unsigned int seqNo) override {seqNoCounter = seqNo;}
 // private:
     /*
      * Transaction substates. Notify server about any change when transaction is running

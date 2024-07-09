@@ -12,11 +12,11 @@
 #include <memory>
 
 #include <MicroOcpp/Core/RequestCallbacks.h>
+#include <MicroOcpp/Model/Model.h>
 
 namespace MicroOcpp {
 
 class Operation;
-class Model;
 class StoredOperationHandler;
 
 class Request {
