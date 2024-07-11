@@ -74,6 +74,7 @@ public:
     std::shared_ptr<Variable> declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath = MO_VARIABLE_FN, Variable::Mutability mutability = Variable::Mutability::ReadWrite, Variable::AttributeTypeSet attributes = Variable::AttributeTypeSet(), bool rebootRequired = false, bool accessible = true);
 
     bool commit();
+    bool load();
 
     void addContainer(std::shared_ptr<VariableContainer> container);
 

@@ -11,6 +11,7 @@
 #if MO_ENABLE_V201
 
 #include <MicroOcpp/Model/Variables/VariableService.h>
+#include <MicroOcpp/Model/Variables/VariableContainerFlash.h>
 #include <MicroOcpp/Core/Context.h>
 #include <MicroOcpp/Operations/SetVariables.h>
 #include <MicroOcpp/Operations/GetVariables.h>
@@ -57,13 +58,13 @@ std::unique_ptr<VariableContainer> VariableService::createContainer(const char *
     //create non-persistent Variable store (i.e. lives only in RAM) if
     //     - Flash FS usage is switched off OR
     //     - Filename starts with "/volatile"
-//    if (!filesystem ||
-//                 !strncmp(filename, MO_VARIABLE_VOLATILE, strlen(MO_VARIABLE_VOLATILE))) {
+   if (!filesystem ||
+                !strncmp(filename, MO_VARIABLE_VOLATILE, strlen(MO_VARIABLE_VOLATILE))) {
         return makeVariableContainerVolatile(filename, accessible);
-//    } else {
-//        //create persistent Variable store. This is the normal case
-//        return makeVariableContainerFlash(filesystem, filename, accessible);
-//    }
+   } else {
+       //create persistent Variable store. This is the normal case
+       return makeVariableContainerFlash(filesystem, filename, accessible);
+   }
 }
 
 void VariableService::addContainer(std::shared_ptr<VariableContainer> container) {
@@ -142,6 +143,7 @@ std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataTyp
             if (container->isAccessible() != accessible) {
                 MO_DBG_ERR("conflicting accessibility for %s", name);
             }
+            container->loadStaticKey(*variable,component, name);
             return variable;
         }
     }
@@ -237,7 +239,6 @@ std::shared_ptr<Variable> VariableService::declareVariable(const ComponentId& co
             return nullptr;
         }
     }
-
     loadVariableCharacteristics(*res, mutability, rebootRequired, getInternalDataType<T>());
     return res;
 }
@@ -251,6 +252,18 @@ bool VariableService::commit() {
 
     for (auto& container : containers) {
         if (!container->save()) {
+            success = false;
+        }
+    }
+
+    return success;
+}
+
+bool VariableService::load() {
+    bool success = true;
+
+    for (auto& container : containers) {
+        if (!container->load()) {
             success = false;
         }
     }

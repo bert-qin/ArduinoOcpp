@@ -31,7 +31,7 @@ std::vector<ConfigurationContainer*> getConfigurationContainersPublic();
 
 bool configuration_init(std::shared_ptr<FilesystemAdapter> filesytem);
 void configuration_deinit();
-
+// default to load all files
 bool configuration_load(const char *filename = nullptr);
 
 bool configuration_save();

@@ -231,6 +231,8 @@ public:
     void detach();
     bool isDetached();
 };
+const char *serializeTVar(Variable::InternalDataType type);
+bool deserializeTVar(const char *serialized, Variable::InternalDataType& out);
 
 std::unique_ptr<Variable> makeVariable(Variable::InternalDataType dtype, Variable::AttributeTypeSet supportAttributes);
 

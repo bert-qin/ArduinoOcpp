@@ -370,7 +370,11 @@ void mocpp_initialize(Connection& connection, const char *bootNotificationCreden
     auto mocppVersion = declareConfiguration<const char*>("MicroOcppVersion", MO_VERSION, MO_KEYVALUE_FN, false, false, false);
 
     configuration_load();
-
+#if MO_ENABLE_V201
+    if (version.major == 2) {
+        model.getVariableService()->load();
+    }
+#endif
     if (mocppVersion) {
         mocppVersion->setString(MO_VERSION);
     }

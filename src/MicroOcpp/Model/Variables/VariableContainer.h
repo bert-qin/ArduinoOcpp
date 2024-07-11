@@ -51,6 +51,7 @@ public:
     virtual size_t size() const = 0;
     virtual Variable *getVariable(size_t i) const = 0;
     virtual std::shared_ptr<Variable> getVariable(const ComponentId& component, const char *variableName) const = 0;
+    virtual void loadStaticKey(Variable& var, const ComponentId& component, const char *variableName) { } //possible optimization: can replace internal key with passed static key
 };
 
 class VariableContainerVolatile : public VariableContainer {

@@ -403,4 +403,32 @@ std::unique_ptr<Variable> MicroOcpp::makeVariable(Variable::InternalDataType dty
     return nullptr;
 }
 
+const char * MicroOcpp::serializeTVar(Variable::InternalDataType type) {
+    switch (type) {
+        case Variable::InternalDataType::Int:
+            return "int";
+        case Variable::InternalDataType::Bool:
+            return "bool";
+        case Variable::InternalDataType::String:
+            return "string";
+    }
+    return "_Undefined";
+}
+
+bool MicroOcpp::deserializeTVar(const char *serialized, Variable::InternalDataType& out) {
+    if (!strcmp(serialized, "int")) {
+        out = Variable::InternalDataType::Int;
+        return true;
+    } else if (!strcmp(serialized, "bool")) {
+        out = Variable::InternalDataType::Bool;
+        return true;
+    } else if (!strcmp(serialized, "string")) {
+        out = Variable::InternalDataType::String;
+        return true;
+    } else {
+        MO_DBG_WARN("config type error");
+        return false;
+    }
+}
+
 #endif // MO_ENABLE_V201
