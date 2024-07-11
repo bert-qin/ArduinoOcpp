@@ -41,9 +41,9 @@ namespace MicroOcpp
             auto revisionSum_old = revisionSum;
 
             revisionSum = 0;
-            for (auto &config : variables)
+            for (auto &var : variables)
             {
-                revisionSum += config->getValueRevision();
+                revisionSum += var->getValueRevision();
             }
 
             return revisionSum != revisionSum_old;
@@ -82,28 +82,28 @@ namespace MicroOcpp
 
             JsonObject root = doc->as<JsonObject>();
 
-            JsonObject configHeader = root["head"];
+            JsonObject varHeader = root["head"];
 
-            if (strcmp(configHeader["content-type"] | "Invalid", "ocpp_variable_file"))
+            if (strcmp(varHeader["content-type"] | "Invalid", "ocpp_variable_file"))
             {
                 MO_DBG_ERR("Unable to initialize: unrecognized variable file format");
                 return false;
             }
 
-            if (strcmp(configHeader["version"] | "Invalid", "1.0"))
+            if (strcmp(varHeader["version"] | "Invalid", "1.0"))
             {
                 MO_DBG_ERR("Unable to initialize: unsupported version");
                 return false;
             }
 
-            JsonArray configurationsArray = root["variables"];
-            if (configurationsArray.size() > MAX_CONFIGURATIONS)
+            JsonArray varsArray = root["variables"];
+            if (varsArray.size() > MAX_CONFIGURATIONS)
             {
-                MO_DBG_ERR("Unable to initialize: variables_len is too big (=%zu)", configurationsArray.size());
+                MO_DBG_ERR("Unable to initialize: variables_len is too big (=%zu)", varsArray.size());
                 return false;
             }
 
-            for (JsonObject stored : configurationsArray)
+            for (JsonObject stored : varsArray)
             {
                 Variable::InternalDataType type;
                 if (!deserializeTVar(stored["type"] | "_Undefined", type))
@@ -129,17 +129,17 @@ namespace MicroOcpp
                 std::unique_ptr<char[]> name_pooled;
 
                 ComponentId componentId(componentName, EvseId(stored["evseId"] | -1, stored["connectorId"] | -1));
-                auto config = getVariable(componentId, name);
-                if (!config)
+                auto var = getVariable(componentId, name);
+                if (!var)
                 {
                     componentName_pooled.reset(new char[strlen(componentName) + 1]);
                     strcpy(componentName_pooled.get(), componentName);
                     name_pooled.reset(new char[strlen(name) + 1]);
                     strcpy(name_pooled.get(), name);
                     componentId = ComponentId(componentName_pooled.get(), EvseId(stored["evseId"] | -1, stored["connectorId"] | -1));
-                    config = createVariable(type, Variable::AttributeTypeSet()); // todo: only actual now
-                    config->setComponentId(componentId);
-                    config->setName(name_pooled.get());
+                    var = createVariable(type, Variable::AttributeTypeSet()); // todo: only actual now
+                    var->setComponentId(componentId);
+                    var->setName(name_pooled.get());
                 }
                 if (stored.containsKey("value"))
                 {
@@ -153,7 +153,7 @@ namespace MicroOcpp
                             continue;
                         }
                         int value = stored["value"] | 0;
-                        config->setInt(value);
+                        var->setInt(value);
                         break;
                     }
                     case Variable::InternalDataType::Bool:
@@ -164,7 +164,7 @@ namespace MicroOcpp
                             continue;
                         }
                         bool value = stored["value"] | false;
-                        config->setBool(value);
+                        var->setBool(value);
                         break;
                     }
                     case Variable::InternalDataType::String:
@@ -175,7 +175,7 @@ namespace MicroOcpp
                             continue;
                         }
                         const char *value = stored["value"] | "";
-                        config->setString(value);
+                        var->setString(value);
                         break;
                     }
                     }
@@ -186,7 +186,7 @@ namespace MicroOcpp
                     keyPool.push_back(std::move(componentName_pooled));
                     keyPool.push_back(std::move(name_pooled));
                 }
-                add(config);
+                add(var);
             }
 
             variablesUpdated();
