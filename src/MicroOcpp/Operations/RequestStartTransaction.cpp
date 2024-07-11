@@ -8,6 +8,8 @@
 
 #include <MicroOcpp/Operations/RequestStartTransaction.h>
 #include <MicroOcpp/Model/Transactions/TransactionService.h>
+#include <MicroOcpp/Model/SmartCharging/SmartChargingService.h>
+#include <MicroOcpp/Core/Context.h>
 #include <MicroOcpp/Debug.h>
 
 using MicroOcpp::Ocpp201::RequestStartTransaction;
@@ -42,7 +44,48 @@ void RequestStartTransaction::processReq(JsonObject payload) {
         return;
     }
 
-    status = txService.requestStartTransaction(evseId, remoteStartId, idToken, transactionId);
+    IdToken groupIdToken;
+        if(payload.containsKey("groupIdToken")){
+            if (!groupIdToken.parseCstr(payload["groupIdToken"]["idToken"] | (const char*)nullptr, payload["groupIdToken"]["type"] | (const char*)nullptr)) { //parseCstr rejects nullptr as argument
+            MO_DBG_ERR("could not parse groupIdToken");
+            errorCode = "FormationViolation";
+            return;
+        }
+    }
+    std::unique_ptr<ChargingProfile> chargingProfile;
+    auto& model = txService.getContext().getModel();
+    int chargingProfileId = -1;
+    if (payload.containsKey("chargingProfile") && model.getSmartChargingService()) {
+        MO_DBG_INFO("Setting Charging profile via RequestStartTransaction");
+
+        JsonObject chargingProfileJson = payload["chargingProfile"];
+        chargingProfile = loadChargingProfile(chargingProfileJson, VER_2_0_1);
+
+        if (!chargingProfile) {
+            errorCode = "PropertyConstraintViolation";
+            errorDescription = "chargingProfile validation failed";
+            return;
+        }
+
+        if (chargingProfile->getChargingProfilePurpose() != ChargingProfilePurposeType::TxProfile) {
+            errorCode = "PropertyConstraintViolation";
+            errorDescription = "Can only set TxProfile here";
+            return;
+        }
+
+        if (chargingProfile->getChargingProfileId() < 0) {
+            errorCode = "PropertyConstraintViolation";
+            errorDescription = "RequestStartTx profile requires non-negative chargingProfileId";
+            return;
+        }
+
+        chargingProfileId = chargingProfile->getChargingProfileId();
+        if(!model.getSmartChargingService()->setChargingProfile(evseId, std::move(chargingProfile))){
+            return;
+        }
+    }
+
+    status = txService.requestStartTransaction(evseId, remoteStartId, idToken, transactionId, groupIdToken, chargingProfileId);
 }
 
 std::unique_ptr<DynamicJsonDocument> RequestStartTransaction::createConf(){

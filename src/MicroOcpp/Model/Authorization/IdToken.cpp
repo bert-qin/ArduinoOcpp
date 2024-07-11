@@ -28,7 +28,7 @@ IdToken::IdToken(const char *token, Type type) : type(type) {
 }
 
 bool IdToken::parseCstr(const char *token, const char *typeCstr) {
-    if (!token || !typeCstr) {
+    if (!token || !*token || !typeCstr) {
         MO_DBG_DEBUG("TRACE");
         return false;
     }

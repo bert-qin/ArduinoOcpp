@@ -15,6 +15,8 @@
 
 namespace MicroOcpp {
 
+class Model;
+class ChargingProfile;
 class TransactionService;
 
 namespace Ocpp201 {
@@ -22,11 +24,10 @@ namespace Ocpp201 {
 class RequestStartTransaction : public Operation {
 private:
     TransactionService& txService;
-
+    const char *errorCode {nullptr};
+    const char *errorDescription = "";
     RequestStartStopStatus status;
     char transactionId [MO_TXID_LEN_MAX + 1] = {'\0'};
-
-    const char *errorCode = nullptr;
 public:
     RequestStartTransaction(TransactionService& txService);
 
@@ -37,6 +38,7 @@ public:
     std::unique_ptr<DynamicJsonDocument> createConf() override;
 
     const char *getErrorCode() override {return errorCode;}
+    const char *getErrorDescription() override {return errorDescription;}
 
 };
 

@@ -523,8 +523,7 @@ TransactionService::TransactionService(Context& context) : context(context) {
     stopTxOnInvalidIdBool = variableService->declareVariable<bool>("TxCtrlr", "StopTxOnInvalidId", true);
     stopTxOnEVSideDisconnectBool = variableService->declareVariable<bool>("TxCtrlr", "StopTxOnEVSideDisconnect", true);
     evConnectionTimeOutInt = variableService->declareVariable<int>("TxCtrlr", "EVConnectionTimeOut", 30);
-
-    variableService->declareVariable<bool>("AuthCtrlr", "AuthorizeRemoteStart", false, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+    authorizeRemoteStartBool = variableService->declareVariable<bool>("AuthCtrlr", "AuthorizeRemoteStart", false);
 
     variableService->registerValidator<const char*>("TxCtrlr", "TxStartPoint", [this] (const char *value) -> bool {
         std::vector<TxStartStopPoint> validated;
@@ -591,7 +590,7 @@ TransactionService::Evse *TransactionService::getEvse(unsigned int evseId) {
     }
 }
 
-RequestStartStopStatus TransactionService::requestStartTransaction(unsigned int evseId, unsigned int remoteStartId, IdToken idToken, char *transactionIdOut) {
+RequestStartStopStatus TransactionService::requestStartTransaction(unsigned int evseId, unsigned int remoteStartId, IdToken idToken, char *transactionIdOut,  IdToken groupIdToken, int chargingProfileId) {
     auto evse = getEvse(evseId);
     if (!evse) {
         return RequestStartStopStatus_Rejected;
@@ -606,7 +605,7 @@ RequestStartStopStatus TransactionService::requestStartTransaction(unsigned int 
         }
     }
 
-    if (!evse->beginAuthorization(idToken, IdToken(), false)) {
+    if (!evse->beginAuthorization(idToken, groupIdToken, authorizeRemoteStartBool && authorizeRemoteStartBool->getBool())) {
         MO_DBG_INFO("EVSE still occupied with pending tx");
         return RequestStartStopStatus_Rejected;
     }
@@ -618,6 +617,10 @@ RequestStartStopStatus TransactionService::requestStartTransaction(unsigned int 
     }
 
     tx->setRemoteStartId(remoteStartId);
+    if (chargingProfileId >= 0) {
+        tx->setTxProfileId(chargingProfileId);
+    }
+    evse->getConnector()->updateTxNotification(TxNotification::RemoteStart);
 
     return RequestStartStopStatus_Accepted;
 }

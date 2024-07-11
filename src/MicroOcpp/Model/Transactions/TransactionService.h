@@ -66,6 +66,7 @@ public:
         void setTransaction(std::shared_ptr<ITransaction> transaction);
 
         bool ocppPermitsCharge();
+        Connector* getConnector(){return connector;}
 
         friend TransactionService;
     };
@@ -90,6 +91,7 @@ private:
     std::shared_ptr<Variable> stopTxOnInvalidIdBool = nullptr;
     std::shared_ptr<Variable> stopTxOnEVSideDisconnectBool = nullptr;
     std::shared_ptr<Variable> evConnectionTimeOutInt = nullptr;
+    std::shared_ptr<Variable> authorizeRemoteStartBool = nullptr;
     uint16_t trackTxStartPoint = -1;
     uint16_t trackTxStopPoint = -1;
     std::vector<TxStartStopPoint> txStartPointParsed;
@@ -106,9 +108,11 @@ public:
 
     Evse *getEvse(unsigned int evseId);
 
-    RequestStartStopStatus requestStartTransaction(unsigned int evseId, unsigned int remoteStartId, IdToken idToken, char *transactionIdOut); //ChargingProfile, GroupIdToken not supported yet
+    RequestStartStopStatus requestStartTransaction(unsigned int evseId, unsigned int remoteStartId, IdToken idToken, char *transactionIdOut, IdToken groupIdToken=IdToken(), int chargingProfileId = -1);
 
     RequestStartStopStatus requestStopTransaction(const char *transactionId);
+
+    Context& getContext(){return context;}
 };
 
 } // namespace MicroOcpp
