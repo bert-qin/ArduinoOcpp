@@ -66,10 +66,12 @@ public:
     void notifyProfilesUpdated();
 
     bool clearChargingProfile(std::function<bool(int, int, ChargingProfilePurposeType, int)> filter);
-
     std::unique_ptr<ChargingSchedule> getCompositeSchedule(int duration, ChargingRateUnitType_Optional unit);
 
     size_t getChargingProfilesCount();
+#if MO_ENABLE_V201
+    std::unique_ptr<std::vector<std::unique_ptr<DynamicJsonDocument>>> getChargingProfiles(const std::function<bool(int, int, ChargingProfilePurposeType, int)> filter);
+#endif
 };
 
 class SmartChargingService {
@@ -107,9 +109,11 @@ public:
     bool setChargingProfile(unsigned int connectorId, std::unique_ptr<ChargingProfile> chargingProfile);
 
     bool clearChargingProfile(std::function<bool(int, int, ChargingProfilePurposeType, int)> filter);
-
     std::unique_ptr<ChargingSchedule> getCompositeSchedule(unsigned int connectorId, int duration, ChargingRateUnitType_Optional unit = ChargingRateUnitType_Optional::None);
     Context& getContext(){return context;}
+#if MO_ENABLE_V201
+    std::unique_ptr<std::vector<std::unique_ptr<DynamicJsonDocument>>> getChargingProfiles(std::function<bool(int, int, ChargingProfilePurposeType, int)> filter);
+#endif
 };
 
 //filesystem-related helper functions
@@ -117,6 +121,9 @@ namespace SmartChargingServiceUtils {
 bool printProfileFileName(char *out, size_t bufsize, unsigned int connectorId, ChargingProfilePurposeType purpose, unsigned int stackLevel);
 bool storeProfile(std::shared_ptr<FilesystemAdapter> filesystem, unsigned int connectorId, ChargingProfile *chargingProfile);
 bool removeProfile(std::shared_ptr<FilesystemAdapter> filesystem, unsigned int connectorId, ChargingProfilePurposeType purpose, unsigned int stackLevel);
+#if MO_ENABLE_V201
+std::unique_ptr<DynamicJsonDocument> getProfile(std::shared_ptr<FilesystemAdapter> filesystem, unsigned int connectorId, ChargingProfilePurposeType purpose, unsigned int stackLevel);
+#endif
 }
 
 } //end namespace MicroOcpp

@@ -11,6 +11,7 @@
 #include <MicroOcpp/Operations/ClearChargingProfile.h>
 #include <MicroOcpp/Operations/GetCompositeSchedule.h>
 #include <MicroOcpp/Operations/SetChargingProfile.h>
+#include <MicroOcpp/Operations/GetChargingProfiles.h>
 #include <MicroOcpp/Debug.h>
 
 using namespace::MicroOcpp;
@@ -237,6 +238,29 @@ bool SmartChargingConnector::clearChargingProfile(const std::function<bool(int, 
     return found;
 }
 
+#if MO_ENABLE_V201
+std::unique_ptr<std::vector<std::unique_ptr<DynamicJsonDocument>>> SmartChargingConnector::getChargingProfiles(const std::function<bool(int, int, ChargingProfilePurposeType, int)> filter) {
+    auto items = std::unique_ptr<std::vector<std::unique_ptr<DynamicJsonDocument>>>(new std::vector<std::unique_ptr<DynamicJsonDocument>>());
+
+    ProfileStack *profileStacks [] = {&TxProfile, &TxDefaultProfile};
+
+    for (auto stack : profileStacks) {
+        for (size_t iLevel = 0; iLevel < stack->size(); iLevel++) {
+            if (auto& profile = stack->at(iLevel)) {
+                if (profile && filter(profile->getChargingProfileId(), connectorId, profile->getChargingProfilePurpose(), iLevel)) {
+                    auto item = SmartChargingServiceUtils::getProfile(filesystem, connectorId, profile->getChargingProfilePurpose(), iLevel);
+                    if(item){
+                        items->push_back(std::move(item));
+                    }
+                }
+            }
+        }
+    }
+
+    return items;
+}
+#endif
+
 std::unique_ptr<ChargingSchedule> SmartChargingConnector::getCompositeSchedule(int duration, ChargingRateUnitType_Optional unit) {
     
     auto& startSchedule = model.getClock().now();
@@ -328,7 +352,10 @@ SmartChargingService::SmartChargingService(Context& context, std::shared_ptr<Fil
         return new Ocpp16::GetCompositeSchedule(context.getModel(), *this);});
     context.getOperationRegistry().registerOperation("SetChargingProfile", [&context, this] () {
         return new Ocpp16::SetChargingProfile(context.getModel(), *this);});
-
+#if MO_ENABLE_V201
+    context.getOperationRegistry().registerOperation("GetChargingProfiles", [this] () {
+        return new Ocpp201::GetChargingProfiles(*this);});
+#endif
     loadProfiles();
 }
 
@@ -610,6 +637,38 @@ bool SmartChargingService::setChargingProfile(unsigned int connectorId, std::uni
     return success;
 }
 
+#if MO_ENABLE_V201
+std::unique_ptr<std::vector<std::unique_ptr<DynamicJsonDocument>>> SmartChargingService::getChargingProfiles(std::function<bool(int, int, ChargingProfilePurposeType, int)> filter) {
+    auto results = std::unique_ptr<std::vector<std::unique_ptr<DynamicJsonDocument>>>(new std::vector<std::unique_ptr<DynamicJsonDocument>>());
+
+    for (size_t cId = 0; cId < connectors.size(); cId++) {
+        auto items = connectors[cId].getChargingProfiles(filter);
+        if(!items->empty()){
+            //add items to result
+            results->reserve(results->size() + items->size());
+            results->insert(results->end(), std::make_move_iterator(items->begin()), std::make_move_iterator(items->end()));
+        }
+    }
+
+    ProfileStack *profileStacks [] = {&ChargePointMaxProfile, &ChargePointTxDefaultProfile};
+
+    for (auto stack : profileStacks) {
+        for (size_t iLevel = 0; iLevel < stack->size(); iLevel++) {
+            if (auto& profile = stack->at(iLevel)) {
+                if (filter(profile->getChargingProfileId(), 0, profile->getChargingProfilePurpose(), iLevel)) {
+                    auto item = SmartChargingServiceUtils::getProfile(filesystem, 0, profile->getChargingProfilePurpose(), iLevel);
+                    if(item){
+                        results->push_back(std::move(item));
+                    }
+                }
+            }
+        }
+    }
+
+    return results;
+}
+#endif
+
 bool SmartChargingService::clearChargingProfile(std::function<bool(int, int, ChargingProfilePurposeType, int)> filter) {
     bool found = false;
 
@@ -766,5 +825,22 @@ bool SmartChargingServiceUtils::removeProfile(std::shared_ptr<FilesystemAdapter>
 
     return filesystem->remove(fn);
 }
+
+#if MO_ENABLE_V201
+std::unique_ptr<DynamicJsonDocument> SmartChargingServiceUtils::getProfile(std::shared_ptr<FilesystemAdapter> filesystem, unsigned int connectorId, ChargingProfilePurposeType purpose, unsigned int stackLevel) {
+
+    if (!filesystem) {
+        return nullptr;
+    }
+
+    char fn [MO_MAX_PATH_SIZE] = {'\0'};
+
+    if (!printProfileFileName(fn, MO_MAX_PATH_SIZE, connectorId, purpose, stackLevel)) {
+        return nullptr;
+    }
+
+    return FilesystemUtils::loadJson(filesystem, fn);
+}
+#endif
 
 

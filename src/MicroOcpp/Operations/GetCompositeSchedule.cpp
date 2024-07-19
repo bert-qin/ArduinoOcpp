@@ -34,6 +34,7 @@ void GetCompositeSchedule::processReq(JsonObject payload) {
 
     if ((unsigned int) connectorId >= model.getNumConnectors()) {
         errorCode = "PropertyConstraintViolation";
+        return;
     }
 
     const char *unitStr =  payload["chargingRateUnit"] | "_Undefined";
@@ -53,7 +54,7 @@ std::unique_ptr<DynamicJsonDocument> GetCompositeSchedule::createConf(){
     DynamicJsonDocument chargingScheduleDoc {0};
 
     if (chargingSchedule) {
-        success = chargingSchedule->toJson(chargingScheduleDoc);
+        success = chargingSchedule->toJson(chargingScheduleDoc, model.getVersion());
     }
 
     char scheduleStart_str [JSONDATE_LENGTH + 1] = {'\0'};

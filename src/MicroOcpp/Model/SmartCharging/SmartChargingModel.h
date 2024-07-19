@@ -79,6 +79,9 @@ public:
 
 class ChargingSchedule {
 public:
+#if MO_ENABLE_V201
+    int id = -1;
+#endif
     int duration = -1;
     Timestamp startSchedule;
     ChargingRateUnitType chargingRateUnit;
@@ -98,7 +101,7 @@ public:
      */
     bool calculateLimit(const Timestamp &t, const Timestamp &startOfCharging, ChargeRate& limit, Timestamp& nextChange);
 
-    bool toJson(DynamicJsonDocument& out);
+    bool toJson(DynamicJsonDocument& out, const ProtocolVersion& version=VER_1_6_J);
 
     /*
     * print on console
@@ -108,9 +111,13 @@ public:
 
 class ChargingProfile {
 public:
+    ChargingProfile(const ProtocolVersion& version):version(version){}
+    const ProtocolVersion& version;
     int chargingProfileId = -1;
     int transactionId = -1;
+#if MO_ENABLE_V201
     char transactionIdStr [MO_TXID_LEN_MAX + 1] = {'\0'};
+#endif
     int stackLevel = 0;
     ChargingProfilePurposeType chargingProfilePurpose {ChargingProfilePurposeType::TxProfile};
     ChargingProfileKindType chargingProfileKind {ChargingProfileKindType::Relative}; //copied to ChargingSchedule to increase cohesion of limit algorithms
@@ -136,8 +143,6 @@ public:
 
     int getChargingProfileId();
     int getTransactionId();
-    const char* getTransactionIdStr();
-    bool setTransactionIdStr(const char* transactionId);
     int getStackLevel();
     
     ChargingProfilePurposeType getChargingProfilePurpose();
@@ -148,11 +153,15 @@ public:
     * print on console
     */
     void printProfile();
+#if MO_ENABLE_V201
+    const char* getTransactionIdStr();
+    bool setTransactionIdStr(const char* transactionId);
+#endif
 };
 
 std::unique_ptr<ChargingProfile> loadChargingProfile(JsonObject& json, const ProtocolVersion& version=VER_1_6_J);
 
-bool loadChargingSchedule(JsonObject& json, ChargingSchedule& out);
+bool loadChargingSchedule(JsonObject& json, ChargingSchedule& out, const ProtocolVersion& version=VER_1_6_J);
 
 } //end namespace MicroOcpp
 

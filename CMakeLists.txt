@@ -31,6 +31,8 @@ set(MO_SRC
     src/MicroOcpp/Operations/ChangeConfiguration.cpp
     src/MicroOcpp/Operations/ClearCache.cpp
     src/MicroOcpp/Operations/ClearChargingProfile.cpp
+    src/MicroOcpp/Operations/GetChargingProfiles.cpp
+    src/MicroOcpp/Operations/ReportChargingProfiles.cpp
     src/MicroOcpp/Operations/CustomOperation.cpp
     src/MicroOcpp/Operations/DataTransfer.cpp
     src/MicroOcpp/Operations/DeleteCertificate.cpp
