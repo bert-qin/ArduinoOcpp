@@ -135,6 +135,7 @@ add_library(MicroOcpp ${MO_SRC})
 target_include_directories(MicroOcpp PUBLIC
     "./src"
     "../ArduinoJson/src"
+    "../mbedtls/include"
 )
 
 target_compile_definitions(MicroOcpp PUBLIC
@@ -201,6 +202,7 @@ target_compile_definitions(mo_unit_tests PUBLIC
     MO_ChargingScheduleMaxPeriods=4
     MO_MaxChargingProfilesInstalled=3
     MO_ENABLE_CERT_MGMT=1
+    MO_ENABLE_CERT_STORE_MBEDTLS=1
     MO_ENABLE_CONNECTOR_LOCK=1
 )
 
