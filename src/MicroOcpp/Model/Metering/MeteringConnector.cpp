@@ -38,6 +38,7 @@ MeteringConnector::MeteringConnector(Model& model, int connectorId, MeterStore& 
         stopTxnAlignedDataString = varService->declareVariable<const char*>("AlignedDataCtrlr", "TxEndedMeasurands", "Energy.Active.Import.Register");
         meterValuesInTxOnlyBool = varService->declareVariable<bool>("CustomCtrlr","MeterValuesInTxOnly",true);
         stopTxnDataCapturePeriodicBool = varService->declareVariable<bool>("CustomCtrlr","StopTxnDataCapturePeriodic",false);
+        varService->declareVariable<int>("AlignedDataCtrlr", "TxEndedInterval", 0, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
     }else
 #endif
     {

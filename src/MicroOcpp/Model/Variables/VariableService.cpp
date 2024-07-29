@@ -151,6 +151,7 @@ std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataTyp
 }
 
 VariableService::VariableService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem) : context(context), filesystem(filesystem) {
+    // declareVariable<const char*>("DeviceDataCtrlr", "BytesPerMessage", true, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
     context.getOperationRegistry().registerOperation("SetVariables", [this] () {
         return new Ocpp201::SetVariables(*this);});
     context.getOperationRegistry().registerOperation("GetVariables", [this] () {

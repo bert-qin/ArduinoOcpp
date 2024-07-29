@@ -29,6 +29,8 @@ AuthorizationService::AuthorizationService(Context& context, std::shared_ptr<Fil
 #if MO_ENABLE_V201
     if(context.getVersion().major==2){
         auto varService = context.getModel().getVariableService();
+        varService->declareVariable<bool>("AuthCtrlr", "AuthEnabled", true, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        varService->declareVariable<const char*>("AuthCtrlr", "MasterPassGroupId", "", MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
         localAuthListEnabledBool = varService->declareVariable<bool>("LocalAuthListCtrlr", "LocalAuthListEnabled", true);
         localAuthCacheEnabledBool = varService->declareVariable<bool>("AuthCtrlr", "AuthCacheEnabled", false);
         varService->declareVariable<bool>("LocalAuthListCtrlr", "Available", true, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
