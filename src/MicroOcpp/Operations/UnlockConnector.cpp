@@ -17,6 +17,7 @@ const char* UnlockConnector::getOperationType(){
 }
 
 void UnlockConnector::processReq(JsonObject payload) {
+#if MO_ENABLE_CONNECTOR_LOCK
     int connectorId = -1;
 
 #if MO_ENABLE_V201
@@ -31,26 +32,23 @@ void UnlockConnector::processReq(JsonObject payload) {
     auto connector = model.getConnector(connectorId);
 
     if (!connector) {
-        errorCode = "PropertyConstraintViolation";
+        // NotSupported
         return;
     }
 
-#if MO_ENABLE_CONNECTOR_LOCK
-    {
-        unlockConnector = connector->getOnUnlockConnector();
+    unlockConnector = connector->getOnUnlockConnector();
 
-        if (!unlockConnector) {
-            // NotSupported
-            return;
-        }
-
-        connector->endTransaction(nullptr, "UnlockCommand");
-        connector->updateTxNotification(TxNotification::RemoteStop);
-
-        cbUnlockResult = unlockConnector();
-
-        timerStart = mocpp_tick_ms();
+    if (!unlockConnector) {
+        // NotSupported
+        return;
     }
+
+    connector->endTransaction(nullptr, "UnlockCommand");
+    connector->updateTxNotification(TxNotification::RemoteStop);
+
+    cbUnlockResult = unlockConnector();
+
+    timerStart = mocpp_tick_ms();
 #endif //MO_ENABLE_CONNECTOR_LOCK
 }
 

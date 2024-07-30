@@ -12,6 +12,10 @@
 - Provide ChargePointStatus in API ([#309](https://github.com/matth-x/MicroOcpp/pull/309))
 - Built-in OTA over FTP ([#313](https://github.com/matth-x/MicroOcpp/pull/313))
 - Built-in Diagnostics over FTP ([#313](https://github.com/matth-x/MicroOcpp/pull/313))
+- Error `severity` mechanism ([#331](https://github.com/matth-x/MicroOcpp/pull/331))
+- Build flag `MO_REPORT_NOERROR` to report error recovery ([#331](https://github.com/matth-x/MicroOcpp/pull/331))
+- Support for `parentIdTag` ([#344](https://github.com/matth-x/MicroOcpp/pull/344))
+- Input validation for unsigned int Configs ([#344](https://github.com/matth-x/MicroOcpp/pull/344))
 
 ### Removed
 
@@ -24,6 +28,10 @@
 - Hold back error StatusNotifs when time not set ([#311](https://github.com/matth-x/MicroOcpp/issues/311))
 - Don't send Available when tx occupies connector ([#315](https://github.com/matth-x/MicroOcpp/issues/315))
 - Make ChargingScheduleAllowedChargingRateUnit read-only ([#328](https://github.com/matth-x/MicroOcpp/issues/328))
+- Don't send StatusNotifs while offline ([#344](https://github.com/matth-x/MicroOcpp/pull/344))
+- Don't change into Unavailable upon Reset ([#344](https://github.com/matth-x/MicroOcpp/pull/344))
+- Reject DataTransfer by default ([#344](https://github.com/matth-x/MicroOcpp/pull/344))
+- UnlockConnector NotSupported if connectorId invalid ([#344](https://github.com/matth-x/MicroOcpp/pull/344))
 
 ## [1.1.0] - 2024-05-21
 

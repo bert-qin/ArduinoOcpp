@@ -40,6 +40,9 @@ bool serializeTransaction(ITransaction& tx, DynamicJsonDocument& out) {
     if (tx.getIdTag()[0] != '\0') {
         sessionState["idTag"] = tx.getIdTag();
     }
+    if (tx.getParentIdTag()[0] != '\0') {
+        sessionState["parentIdTag"] = tx.getParentIdTag();
+    }
     if (tx.isAuthorized()) {
         sessionState["authorized"] = true;
     }
@@ -132,6 +135,13 @@ bool deserializeTransaction(ITransaction& tx, JsonObject state) {
 
     if (sessionState.containsKey("idTag")) {
         if (!tx.setIdTag(sessionState["idTag"] | "")) {
+            MO_DBG_ERR("read err");
+            return false;
+        }
+    }
+
+    if (sessionState.containsKey("parentIdTag")) {
+        if (!tx.setParentIdTag(sessionState["parentIdTag"] | "")) {
             MO_DBG_ERR("read err");
             return false;
         }

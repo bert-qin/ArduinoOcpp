@@ -433,30 +433,53 @@ void Connector::loop() {
         freeVendTrackPlugged = connectorPluggedInput();
     }
 
-    auto status = getStatus();
+    ErrorData errorData {nullptr};
+    errorData.severity = 0;
+    int errorDataIndex = -1;
 
     if (model.getVersion().major == 1 && model.getClock().now() >= MIN_TIME) {
         //OCPP 1.6: use StatusNotification to send error codes
+
+        if (reportedErrorIndex >= 0) {
+            auto error = errorDataInputs[reportedErrorIndex].operator()();
+            if (error.isError) {
+                errorData = error;
+                errorDataIndex = reportedErrorIndex;
+            }
+        }
+
         for (auto i = std::min(errorDataInputs.size(), trackErrorDataInputs.size()); i >= 1; i--) {
             auto index = i - 1;
-            auto error = errorDataInputs[index].operator()();
-            if (error.isError && !trackErrorDataInputs[index]) {
+            ErrorData error {nullptr};
+            if ((int)index != errorDataIndex) {
+                error = errorDataInputs[index].operator()();
+            } else {
+                error = errorData;
+            }
+            if (error.isError && !trackErrorDataInputs[index] && error.severity >= errorData.severity) {
                 //new error
-                auto statusNotification = makeRequest(
-                        new Ocpp16::StatusNotification(connectorId, status, model.getClock().now(), error));
-                statusNotification->setTimeout(0);
-                context.initiateRequest(std::move(statusNotification));
-
-                currentStatus = status;
-                reportedStatus = status;
-                trackErrorDataInputs[index] = true;
+                errorData = error;
+                errorDataIndex = index;
+            } else if (error.isError && error.severity > errorData.severity) {
+                errorData = error;
+                errorDataIndex = index;
             } else if (!error.isError && trackErrorDataInputs[index]) {
                 //reset error
                 trackErrorDataInputs[index] = false;
             }
         }
-    }
-    
+
+        if (errorDataIndex != reportedErrorIndex) {
+            if (errorDataIndex >= 0 || MO_REPORT_NOERROR) {
+                reportedStatus = ChargePointStatus_UNDEFINED; //trigger sending currentStatus again with code NoError
+            } else {
+                reportedErrorIndex = -1;
+            }
+        }
+    } //if (model.getVersion().major == 1)
+
+    auto status = getStatus();
+
     if (status != currentStatus) {
         MO_DBG_DEBUG("Status changed %s -> %s %s",
                 currentStatus == ChargePointStatus_UNDEFINED ? "" : cstrFromOcppEveState(currentStatus),
@@ -471,6 +494,10 @@ void Connector::loop() {
             ((!minimumStatusDurationInt || minimumStatusDurationInt->getInt() <= 0) || //MinimumStatusDuration disabled
             mocpp_tick_ms() - t_statusTransition >= ((unsigned long) minimumStatusDurationInt->getInt()) * 1000UL)) {
         reportedStatus = currentStatus;
+        reportedErrorIndex = errorDataIndex;
+        if (errorDataIndex >= 0) {
+            trackErrorDataInputs[errorDataIndex] = true;
+        }
         Timestamp reportedTimestamp = model.getClock().now();
         reportedTimestamp -= (mocpp_tick_ms() - t_statusTransition) / 1000UL;
 
@@ -481,7 +508,7 @@ void Connector::loop() {
                     new Ocpp201::StatusNotification(connectorId, reportedStatus, reportedTimestamp)) :
             #endif //MO_ENABLE_V201
                 makeRequest(
-                    new Ocpp16::StatusNotification(connectorId, reportedStatus, reportedTimestamp, getErrorCode()));
+                    new Ocpp16::StatusNotification(connectorId, reportedStatus, reportedTimestamp, errorData));
 
         statusNotification->setTimeout(0);
         context.initiateRequest(std::move(statusNotification));
@@ -502,8 +529,8 @@ bool Connector::isFaulted() {
 }
 
 const char *Connector::getErrorCode() {
-    for (auto i = errorDataInputs.size(); i >= 1; i--) {
-        auto error = errorDataInputs[i-1].operator()();
+    if (reportedErrorIndex >= 0) {
+        auto error = errorDataInputs[reportedErrorIndex].operator()();
         if (error.isError && error.errorCode) {
             return error.errorCode;
         }
@@ -712,8 +739,6 @@ std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
             }
         }
     }
-    #else
-    (void)parentIdTag;
     #endif //MO_ENABLE_RESERVATION
 
     if (!transaction){
@@ -730,6 +755,10 @@ std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
         transaction->setIdTag("");
     } else {
         transaction->setIdTag(idTag);
+    }
+
+    if (parentIdTag) {
+        transaction->setParentIdTag(parentIdTag);
     }
 
     transaction->setBeginTimestamp(model.getClock().now());
@@ -806,6 +835,10 @@ std::shared_ptr<ITransaction> Connector::beginTransaction(const char *idTag) {
             }
         }
         #endif //MO_ENABLE_RESERVATION
+
+        if (idTagInfo.containsKey("parentIdTag")) {
+            tx->setParentIdTag(idTagInfo["parentIdTag"] | "");
+        }
 
         MO_DBG_DEBUG("Authorized transaction process (%s)", tx->getIdTag());
         tx->setAuthorized();
@@ -903,6 +936,10 @@ std::shared_ptr<ITransaction> Connector::beginTransaction_authorized(const char 
         transaction->setIdTag("");
     } else {
         transaction->setIdTag(idTag);
+    }
+
+    if (parentIdTag) {
+        transaction->setParentIdTag(parentIdTag);
     }
 
     transaction->setBeginTimestamp(model.getClock().now());
