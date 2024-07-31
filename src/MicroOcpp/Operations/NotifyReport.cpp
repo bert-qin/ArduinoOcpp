@@ -41,8 +41,8 @@ std::unique_ptr<DynamicJsonDocument> NotifyReport::createReq() {
     capacity += JSON_ARRAY_SIZE(reportData.size());
     for (auto variable : reportData) {
         capacity += JSON_OBJECT_SIZE(4); //total of 4 fields
-        capacity += 2 * JSON_OBJECT_SIZE(2); //component composite
-        capacity += JSON_OBJECT_SIZE(1); //variable composite
+        capacity += 2 * JSON_OBJECT_SIZE(3); //component composite
+        capacity += JSON_OBJECT_SIZE(2); //variable composite
 
         size_t nAttributes = 0;
         size_t valueCapacity = 0;
@@ -102,6 +102,9 @@ std::unique_ptr<DynamicJsonDocument> NotifyReport::createReq() {
         JsonObject reportDataJson = reportDataJsonArray.createNestedObject();
 
         reportDataJson["component"]["name"] = (char*) variable->getComponentId().name; // force copy-mode
+        if(variable->getComponentId().instance){
+            reportDataJson["component"]["instance"] = (char*) variable->getComponentId().instance; // force copy-mode
+        }
 
         if (variable->getComponentId().evse.id >= 0) {
             reportDataJson["component"]["evse"]["id"] = variable->getComponentId().evse.id;
@@ -112,7 +115,9 @@ std::unique_ptr<DynamicJsonDocument> NotifyReport::createReq() {
         }
 
         reportDataJson["variable"]["name"] = (char*) variable->getName(); // force copy-mode
-
+        if(variable->getInstance()){
+            reportDataJson["variable"]["instance"] = (char*) variable->getInstance(); // force copy-mode
+        }
         JsonArray variableAttribute = reportDataJson.createNestedArray("variableAttribute");
 
         for (auto attributeType : enumerateAttributeTypes) {

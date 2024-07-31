@@ -27,18 +27,23 @@ MeteringConnector::MeteringConnector(Model& model, int connectorId, MeterStore& 
     std::shared_ptr<ICfg> stopTxnAlignedDataString;
 
 #if MO_ENABLE_V201
+    std::shared_ptr<ICfg> meterValuesTxStartedDataString;
     if(model.getVersion().major == 2){
-        auto varService = model.getVariableService();
+        auto varService = model.getVariableService(); 
+        meterValuesTxStartedDataString = varService->declareVariable<const char*>("SampledDataCtrlr", "TxStartedMeasurands", "Energy.Active.Import.Register");
         meterValuesSampledDataString = varService->declareVariable<const char*>("SampledDataCtrlr", "TxUpdatedMeasurands", "Energy.Active.Import.Register");
-        stopTxnSampledDataString = varService->declareVariable<const char*>("SampledDataCtrlr","StopTxnSampledData", "Energy.Active.Import.Register");
-        meterValueCacheSizeInt = varService->declareVariable<int>("CustomCtrlr","MeterValueCacheSize",1);
+        stopTxnSampledDataString = varService->declareVariable<const char*>("SampledDataCtrlr","TxEndedMeasurands", "Energy.Active.Import.Register");
         meterValueSampleIntervalInt = varService->declareVariable<int>("SampledDataCtrlr","TxUpdatedInterval",60);
+        sampledDataTxEndedIntervalInt = varService->declareVariable<int>("SampledDataCtrlr","TxEndedInterval",0);
         meterValuesAlignedDataString = varService->declareVariable<const char*>("AlignedDataCtrlr", "Measurands", "Energy.Active.Import.Register");
         clockAlignedDataIntervalInt = varService->declareVariable<int>("AlignedDataCtrlr","Interval",0);
         stopTxnAlignedDataString = varService->declareVariable<const char*>("AlignedDataCtrlr", "TxEndedMeasurands", "Energy.Active.Import.Register");
+        alignedDataTxEndedIntervalInt = varService->declareVariable<int>("AlignedDataCtrlr", "TxEndedInterval", 0);
+        meterValueCacheSizeInt = varService->declareVariable<int>("CustomCtrlr","MeterValueCacheSize",1);
         meterValuesInTxOnlyBool = varService->declareVariable<bool>("CustomCtrlr","MeterValuesInTxOnly",true);
         stopTxnDataCapturePeriodicBool = varService->declareVariable<bool>("CustomCtrlr","StopTxnDataCapturePeriodic",false);
-        varService->declareVariable<int>("AlignedDataCtrlr", "TxEndedInterval", 0, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        
+        txStartDataBuilder = std::unique_ptr<MeterValueBuilder>(new MeterValueBuilder(samplers, meterValuesTxStartedDataString));
     }else
 #endif
     {
@@ -82,6 +87,9 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
 
     if (txBreak) {
         lastSampleTime = mocpp_tick_ms();
+#if MO_ENABLE_V201
+        lastTxEndSampleTime = lastSampleTime;
+#endif
     }
 
     if ((txBreak || meterData.size() >= (size_t) meterValueCacheSizeInt->getInt()) && !meterData.empty()) {
@@ -138,7 +146,7 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
                     meterData.push_back(std::move(alignedMeterValues));
                 }
 
-                if (stopTxnData) {
+                if (model.getVersion().major==1 && stopTxnData) {
                     auto alignedStopTx = stopTxnAlignedDataBuilder->takeSample(model.getClock().now(), ReadingContext::SampleClock);
                     if (alignedStopTx) {
                         stopTxnData->addTxData(std::move(alignedStopTx));
@@ -163,16 +171,54 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
         }
     }
 
+#if MO_ENABLE_V201
+    if (model.getVersion().major==2 && alignedDataTxEndedIntervalInt->getInt() >= 1 && model.getClock().now() >= MIN_TIME) {
+
+        auto& timestampNow = model.getClock().now();
+        auto dt = nextTxEndAlignedTime - timestampNow;
+        if (dt <= 0 ||                              //normal case: interval elapsed
+                dt > alignedDataTxEndedIntervalInt->getInt()) {   //special case: clock has been adjusted or first run
+
+            MO_DBG_DEBUG("Clock aligned measurement %ds: %s", dt,
+                abs(dt) <= 60 ?
+                "in time (tolerance <= 60s)" : "off, e.g. because of first run. Ignore");
+            if (abs(dt) <= 60) { //is measurement still "clock-aligned"?
+                if (model.getVersion().major==1 && stopTxnData) {
+                    auto alignedStopTx = stopTxnAlignedDataBuilder->takeSample(model.getClock().now(), ReadingContext::SampleClock);
+                    if (alignedStopTx) {
+                        stopTxnData->addTxData(std::move(alignedStopTx));
+                    }
+                }
+
+            }
+            
+            Timestamp midnightBase = Timestamp(2010,0,0,0,0,0);
+            auto intervall = timestampNow - midnightBase;
+            intervall %= 3600 * 24;
+            Timestamp midnight = timestampNow - intervall;
+            intervall += alignedDataTxEndedIntervalInt->getInt();
+            if (intervall >= 3600 * 24) {
+                //next measurement is tomorrow; set to precisely 00:00 
+                nextTxEndAlignedTime = midnight;
+                nextTxEndAlignedTime += 3600 * 24;
+            } else {
+                intervall /= alignedDataTxEndedIntervalInt->getInt();
+                nextTxEndAlignedTime = midnight + (intervall * alignedDataTxEndedIntervalInt->getInt());
+            }
+        }
+    }
+#endif
+
     if (meterValueSampleIntervalInt->getInt() >= 1) {
         //record periodic tx data
-
         if (mocpp_tick_ms() - lastSampleTime >= (unsigned long) (meterValueSampleIntervalInt->getInt() * 1000)) {
+
             auto sampleMeterValues = sampledDataBuilder->takeSample(model.getClock().now(), ReadingContext::SamplePeriodic);
             if (sampleMeterValues) {
                 meterData.push_back(std::move(sampleMeterValues));
             }
 
-            if (stopTxnData && stopTxnDataCapturePeriodicBool->getBool()) {
+            if (model.getVersion().major==1 && stopTxnData && stopTxnDataCapturePeriodicBool->getBool()) {
                 auto sampleStopTx = stopTxnSampledDataBuilder->takeSample(model.getClock().now(), ReadingContext::SamplePeriodic);
                 if (sampleStopTx) {
                     stopTxnData->addTxData(std::move(sampleStopTx));
@@ -182,6 +228,20 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
         }   
     }
 
+#if MO_ENABLE_V201
+    if (model.getVersion().major==2 && sampledDataTxEndedIntervalInt->getInt() >=1) {
+        //record periodic tx end data
+        if (mocpp_tick_ms() - lastTxEndSampleTime >= (unsigned long) (sampledDataTxEndedIntervalInt->getInt() * 1000)) {
+            if (stopTxnData && stopTxnDataCapturePeriodicBool->getBool()) {
+                auto sampleStopTx = stopTxnSampledDataBuilder->takeSample(model.getClock().now(), ReadingContext::SamplePeriodic);
+                if (sampleStopTx) {
+                    stopTxnData->addTxData(std::move(sampleStopTx));
+                }
+            }
+            lastSampleTime = mocpp_tick_ms();
+        }   
+    }
+#endif
     if (clockAlignedDataIntervalInt->getInt() < 1 && meterValueSampleIntervalInt->getInt() < 1) {
         meterData.clear();
     }
@@ -303,7 +363,7 @@ bool MeteringConnector::takeTriggeredTransactionEvent() {
 }
 
 std::unique_ptr<MeterValue> MeteringConnector::takeBeginMeterValue() {
-    auto sampleTxBegin = sampledDataBuilder->takeSample(model.getClock().now(), ReadingContext::TransactionBegin);
+    auto sampleTxBegin = txStartDataBuilder->takeSample(model.getClock().now(), ReadingContext::TransactionBegin);
     return std::move(sampleTxBegin);
 }
 #endif

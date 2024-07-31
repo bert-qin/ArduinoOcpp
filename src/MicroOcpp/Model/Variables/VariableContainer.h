@@ -50,7 +50,7 @@ public:
 
     virtual size_t size() const = 0;
     virtual Variable *getVariable(size_t i) const = 0;
-    virtual std::shared_ptr<Variable> getVariable(const ComponentId& component, const char *variableName) const = 0;
+    virtual std::shared_ptr<Variable> getVariable(const ComponentId& component, const char *variableName, const char *instanceName=nullptr) const = 0;
     virtual void loadStaticKey(Variable& var, const ComponentId& component, const char *variableName) { } //possible optimization: can replace internal key with passed static key
 };
 
@@ -68,7 +68,7 @@ public:
     bool add(std::shared_ptr<Variable> config) override;
     size_t size() const override;
     Variable *getVariable(size_t i) const override;
-    std::shared_ptr<Variable> getVariable(const ComponentId& component, const char *variableName) const override;
+    std::shared_ptr<Variable> getVariable(const ComponentId& component, const char *variableName, const char *instanceName=nullptr) const override;
 };
 
 std::unique_ptr<VariableContainerVolatile> makeVariableContainerVolatile(const char *filename, bool accessible);

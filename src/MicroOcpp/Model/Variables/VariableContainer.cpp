@@ -56,7 +56,7 @@ Variable *VariableContainerVolatile::getVariable(size_t i) const {
     return variables[i].get();
 }
 
-std::shared_ptr<Variable> VariableContainerVolatile::getVariable(const ComponentId& component, const char *variableName) const {
+std::shared_ptr<Variable> VariableContainerVolatile::getVariable(const ComponentId& component, const char *variableName, const char *instanceName) const {
     for (auto it = variables.begin(); it != variables.end(); it++) {
         if (!strcmp((*it)->getName(), variableName) &&
                 (*it)->getComponentId().equals(component)) {

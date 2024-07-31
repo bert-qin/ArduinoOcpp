@@ -7,6 +7,7 @@
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/Transactions/Transaction.h>
 #include <MicroOcpp/Core/Configuration.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 #include <MicroOcpp/Core/FilesystemUtils.h>
 #include <MicroOcpp/Operations/ClearChargingProfile.h>
 #include <MicroOcpp/Operations/GetCompositeSchedule.h>
@@ -340,11 +341,23 @@ SmartChargingService::SmartChargingService(Context& context, std::shared_ptr<Fil
     for (unsigned int cId = 1; cId < numConnectors; cId++) {
         connectors.push_back(std::move(SmartChargingConnector(context.getModel(), filesystem, cId, ChargePointMaxProfile, ChargePointTxDefaultProfile)));
     }
-
-    declareConfiguration<int>("ChargeProfileMaxStackLevel", MO_ChargeProfileMaxStackLevel, CONFIGURATION_VOLATILE, true);
-    declareConfiguration<const char*>("ChargingScheduleAllowedChargingRateUnit", "", CONFIGURATION_VOLATILE, true);
-    declareConfiguration<int>("ChargingScheduleMaxPeriods", MO_ChargingScheduleMaxPeriods, CONFIGURATION_VOLATILE, true);
-    declareConfiguration<int>("MaxChargingProfilesInstalled", MO_MaxChargingProfilesInstalled, CONFIGURATION_VOLATILE, true);
+#if MO_ENABLE_V201
+    if(context.getModel().getVersion().major == 2){
+        auto varService = context.getModel().getVariableService();
+        varService->declareVariable<int>("SmartChargingCtrlr", "ProfileStackLevel", MO_ChargeProfileMaxStackLevel, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        varService->declareVariable<const char*>("SmartChargingCtrlr", "RateUnit", "A,W", MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        varService->declareVariable<int>("SmartChargingCtrlr", "PeriodsPerSchedule", MO_ChargingScheduleMaxPeriods, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+        
+        context.getOperationRegistry().registerOperation("GetChargingProfiles", [this] () {
+            return new Ocpp201::GetChargingProfiles(*this);});
+    }else
+#endif
+    {
+        declareConfiguration<int>("ChargeProfileMaxStackLevel", MO_ChargeProfileMaxStackLevel, CONFIGURATION_VOLATILE, true);
+        declareConfiguration<const char*>("ChargingScheduleAllowedChargingRateUnit", "", CONFIGURATION_VOLATILE, true);
+        declareConfiguration<int>("ChargingScheduleMaxPeriods", MO_ChargingScheduleMaxPeriods, CONFIGURATION_VOLATILE, true);
+        declareConfiguration<int>("MaxChargingProfilesInstalled", MO_MaxChargingProfilesInstalled, CONFIGURATION_VOLATILE, true);
+    }
 
     context.getOperationRegistry().registerOperation("ClearChargingProfile", [this] () {
         return new Ocpp16::ClearChargingProfile(*this);});
@@ -352,10 +365,6 @@ SmartChargingService::SmartChargingService(Context& context, std::shared_ptr<Fil
         return new Ocpp16::GetCompositeSchedule(context.getModel(), *this);});
     context.getOperationRegistry().registerOperation("SetChargingProfile", [&context, this] () {
         return new Ocpp16::SetChargingProfile(context.getModel(), *this);});
-#if MO_ENABLE_V201
-    context.getOperationRegistry().registerOperation("GetChargingProfiles", [this] () {
-        return new Ocpp201::GetChargingProfiles(*this);});
-#endif
     loadProfiles();
 }
 

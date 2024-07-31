@@ -113,7 +113,7 @@ ResetService::ResetService(Context& context)
       : context(context) {
 
     auto varService = context.getModel().getVariableService();
-    resetRetriesInt = varService->declareVariable<int>("OCPPCommCtrlr", "ResetRetries", 0);
+    resetRetriesInt = varService->declareVariable<int>("OCPPCommCtrlr", "ResetRetries", 2);
 
     context.getOperationRegistry().registerOperation("Reset", [this] () {
         return new Ocpp201::Reset(*this);});

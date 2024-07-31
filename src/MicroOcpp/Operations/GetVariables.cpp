@@ -55,7 +55,9 @@ void GetVariables::processReq(JsonObject payload) {
         }
 
         data.componentName = componentNameCstr;
+        data.componentInstance = getVariable["component"]["instance"] | (const char*) nullptr;
         data.variableName = variableNameCstr;
+        data.variableInstance = getVariable["variable"]["instance"] | (const char*) nullptr;
 
         // TODO check against ConfigurationValueSize
 
@@ -81,9 +83,11 @@ std::unique_ptr<DynamicJsonDocument> GetVariables::createConf(){
     for (auto& query : queries) {
         query.attributeStatus = variableService.getVariable(
                 query.attributeType,
-                ComponentId(query.componentName.c_str(), 
+                ComponentId(query.componentName.c_str(),
+                    query.componentInstance, 
                     EvseId(query.componentEvseId, query.componentEvseConnectorId)),
                 query.variableName.c_str(),
+                query.variableInstance,
                 &query.variable);
     }
 
@@ -122,9 +126,11 @@ std::unique_ptr<DynamicJsonDocument> GetVariables::createConf(){
                 valueCapacity + // capacity needed for storing the value
                 JSON_OBJECT_SIZE(2) + // component
                     data.componentName.length() + 1 +
+                    (data.componentInstance?strlen(data.componentInstance)+1:0) + 
                     JSON_OBJECT_SIZE(2) + // evse
                 JSON_OBJECT_SIZE(2) + // variable
-                    data.variableName.length() + 1;
+                    data.variableName.length() + 1
+                    +(data.variableInstance?strlen(data.variableInstance)+1:0);
     }
 
     auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(capacity));
@@ -204,6 +210,9 @@ std::unique_ptr<DynamicJsonDocument> GetVariables::createConf(){
         }
 
         getVariable["component"]["name"] = (char*) data.componentName.c_str(); // force copy-mode
+        if(data.componentInstance){
+            getVariable["component"]["instance"] = (char*) data.componentInstance; // force copy-mode
+        }
 
         if (data.componentEvseId >= 0) {
             getVariable["component"]["evse"]["id"] = data.componentEvseId;
@@ -214,6 +223,9 @@ std::unique_ptr<DynamicJsonDocument> GetVariables::createConf(){
         }
 
         getVariable["variable"]["name"] = (char*) data.variableName.c_str(); // force copy-mode
+        if(data.variableInstance){
+            getVariable["variable"]["instance"] = (char*) data.variableInstance; // force copy-mode
+        }
     }
 
     return doc;

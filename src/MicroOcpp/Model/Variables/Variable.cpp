@@ -20,9 +20,11 @@ using namespace MicroOcpp;
 
 ComponentId::ComponentId(const char *name) : name(name) { }
 ComponentId::ComponentId(const char *name, EvseId evse) : name(name), evse(evse) { }
+ComponentId::ComponentId(const char *name, const char* instance, EvseId evse) : name(name), instance(instance), evse(evse){ }
 
 bool ComponentId::equals(const ComponentId& other) const {
     return !strcmp(name, other.name) &&
+        ((!instance  && !other.instance) || !strcmp(instance, other.instance)) && //instance undefined or equal
         ((evse.id < 0 && other.evse.id < 0) || (evse.id == other.evse.id)) && // evseId undefined or equal
         ((evse.connectorId < 0 && other.evse.connectorId < 0) || (evse.connectorId == other.evse.connectorId)); // connectorId undefined or equal
 }
@@ -85,6 +87,13 @@ void Variable::setName(const char *name) {
 }
 const char *Variable::getName() const {
     return variableName;
+}
+
+void Variable::setInstance(const char *instance) {
+    this->variableInstance = instance;
+}
+const char *Variable::getInstance() const {
+    return variableInstance;
 }
 
 void Variable::setComponentId(const ComponentId& componentId) {

@@ -27,9 +27,11 @@ struct GetVariableData {
     // GetVariableDataType
     Variable::AttributeType attributeType = Variable::AttributeType::Actual;
     std::string componentName;
+    const char* componentInstance = nullptr;
     int componentEvseId = -1;
     int componentEvseConnectorId = -1;
     std::string variableName;
+    const char* variableInstance = nullptr;
 
     // GetVariableResultType
     GetVariableStatus attributeStatus;

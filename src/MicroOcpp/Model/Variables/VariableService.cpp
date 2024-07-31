@@ -151,7 +151,25 @@ std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataTyp
 }
 
 VariableService::VariableService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem) : context(context), filesystem(filesystem) {
-    // declareVariable<const char*>("DeviceDataCtrlr", "BytesPerMessage", true, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+    declareVariable<int>("OCPPCommCtrlr", "MessageTimeout", 30, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"Default");
+    declareVariable<const char*>("OCPPCommCtrlr", "FileTransferProtocols", "HTTP,HTTPS", MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+    declareVariable<int>("OCPPCommCtrlr", "MessageAttemptInterval", 60, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"TransactionEvent");
+    declareVariable<int>("OCPPCommCtrlr", "MessageAttempts", 3, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"TransactionEvent");
+    declareVariable<const char*>("OCPPCommCtrlr", "NetworkConfigurationPriority", "3,2,1,0", MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+    declareVariable<int>("OCPPCommCtrlr", "NetworkProfileConnectionAttempts",3, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+    declareVariable<int>("OCPPCommCtrlr", "OfflineThreshold",30, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+
+    declareVariable<int>("DeviceDataCtrlr", "BytesPerMessage", 40960, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"GetReport");
+    declareVariable<int>("DeviceDataCtrlr", "BytesPerMessage", 40960, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"GetReport");
+    declareVariable<int>("DeviceDataCtrlr", "BytesPerMessage", 40960, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"GetVariables");
+    declareVariable<int>("DeviceDataCtrlr", "BytesPerMessage", 40960, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"SetVariables");
+    declareVariable<int>("DeviceDataCtrlr", "ItemsPerMessage", 512, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"GetReport");
+    declareVariable<int>("DeviceDataCtrlr", "ItemsPerMessage", 512, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"GetVariables");
+    declareVariable<int>("DeviceDataCtrlr", "ItemsPerMessage", 512, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"SetVariables");
+    declareVariable<bool>("DisplayMessageCtrlr", "Available", false, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
+    declareVariable<bool>("TariffCostCtrlr", "Available", false, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"Tariff");
+    declareVariable<bool>("TariffCostCtrlr", "Available", false, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"Cost");
+
     context.getOperationRegistry().registerOperation("SetVariables", [this] () {
         return new Ocpp201::SetVariables(*this);});
     context.getOperationRegistry().registerOperation("GetVariables", [this] () {
@@ -213,7 +231,7 @@ template<> Variable::InternalDataType getInternalDataType<bool>() {return Variab
 template<> Variable::InternalDataType getInternalDataType<const char*>() {return Variable::InternalDataType::String;}
 
 template<class T>
-std::shared_ptr<Variable> VariableService::declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath, Variable::Mutability mutability, Variable::AttributeTypeSet attributes, bool rebootRequired, bool accessible) {
+std::shared_ptr<Variable> VariableService::declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath, Variable::Mutability mutability, const char*instance, Variable::AttributeTypeSet attributes, bool rebootRequired, bool accessible) {
 
     auto res = getVariable(getInternalDataType<T>(), component, name, accessible);
     if (!res) {
@@ -228,6 +246,7 @@ std::shared_ptr<Variable> VariableService::declareVariable(const ComponentId& co
         }
 
         variable->setName(name);
+        variable->setInstance(instance);
         variable->setComponentId(component);
 
         if (!loadVariableFactoryDefault<T>(*variable, factoryDefault)) {
@@ -244,9 +263,9 @@ std::shared_ptr<Variable> VariableService::declareVariable(const ComponentId& co
     return res;
 }
 
-template std::shared_ptr<Variable> VariableService::declareVariable<int>(const ComponentId&, const char*, int, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
-template std::shared_ptr<Variable> VariableService::declareVariable<bool>(const ComponentId&, const char*, bool, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
-template std::shared_ptr<Variable> VariableService::declareVariable<const char*>(const ComponentId&, const char*, const char*, const char*, Variable::Mutability, Variable::AttributeTypeSet, bool, bool);
+template std::shared_ptr<Variable> VariableService::declareVariable<int>(const ComponentId&, const char*, int, const char*, Variable::Mutability, const char*, Variable::AttributeTypeSet, bool, bool);
+template std::shared_ptr<Variable> VariableService::declareVariable<bool>(const ComponentId&, const char*, bool, const char*, Variable::Mutability, const char*, Variable::AttributeTypeSet, bool, bool);
+template std::shared_ptr<Variable> VariableService::declareVariable<const char*>(const ComponentId&, const char*, const char*, const char*, Variable::Mutability, const char*, Variable::AttributeTypeSet, bool, bool);
 
 bool VariableService::commit() {
     bool success = true;
@@ -272,7 +291,7 @@ bool VariableService::load() {
     return success;
 }
 
-SetVariableStatus VariableService::setVariable(Variable::AttributeType attrType, const char *value, const ComponentId& component, const char *variableName) {
+SetVariableStatus VariableService::setVariable(Variable::AttributeType attrType, const char *value, const ComponentId& component, const char *variableName, const char* variableInstance) {
 
     Variable *variable = nullptr;
 
@@ -288,9 +307,9 @@ SetVariableStatus VariableService::setVariable(Variable::AttributeType attrType,
             if (entry->getComponentId().equals(component)) {
                 foundComponent = true;
 
-                if (!strcmp(entry->getName(), variableName)) {
+                if (!strcmp(entry->getName(), variableName) &&
+                ((!entry->getInstance() && !variableInstance) || !strcmp(entry->getInstance(), variableName))) {
                     // found variable. Search terminated in this block
-
                     variable = entry;
                     break;
                 }
@@ -411,7 +430,7 @@ SetVariableStatus VariableService::setVariable(Variable::AttributeType attrType,
     return SetVariableStatus::Accepted;
 }
 
-GetVariableStatus VariableService::getVariable(Variable::AttributeType attrType, const ComponentId& component, const char *variableName, Variable **result) {
+GetVariableStatus VariableService::getVariable(Variable::AttributeType attrType, const ComponentId& component, const char *variableName,  const char* instance, Variable **result) {
 
     bool foundComponent = false;
     for (const auto& container : containers) {
@@ -421,7 +440,8 @@ GetVariableStatus VariableService::getVariable(Variable::AttributeType attrType,
             if (variable->getComponentId().equals(component)) {
                 foundComponent = true;
 
-                if (!strcmp(variable->getName(), variableName)) {
+                if (!strcmp(variable->getName(), variableName) &&
+                ((!variable->getInstance() && !instance) ||  !strcmp(variable->getInstance(), instance))) {
                     // found variable. Search terminated in this block
 
                     if (variable->getMutability() == Variable::Mutability::WriteOnly) {

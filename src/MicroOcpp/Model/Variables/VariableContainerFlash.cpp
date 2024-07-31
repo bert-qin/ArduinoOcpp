@@ -124,22 +124,35 @@ namespace MicroOcpp
                     MO_DBG_ERR("corrupt config");
                     continue;
                 }
+                const char* componentInstance = stored["componentInstance"]|nullptr;
+                const char* instance = stored["instance"]|nullptr;
 
                 std::unique_ptr<char[]> componentName_pooled;
                 std::unique_ptr<char[]> name_pooled;
+                std::unique_ptr<char[]> componentInstance_pooled = nullptr;
+                std::unique_ptr<char[]> instance_pooled = nullptr;
 
-                ComponentId componentId(componentName, EvseId(stored["evseId"] | -1, stored["connectorId"] | -1));
-                auto var = getVariable(componentId, name);
+                ComponentId componentId(componentName,componentInstance,EvseId(stored["evseId"] | -1, stored["connectorId"] | -1));
+                auto var = getVariable(componentId, name, instance);
                 if (!var)
                 {
                     componentName_pooled.reset(new char[strlen(componentName) + 1]);
                     strcpy(componentName_pooled.get(), componentName);
                     name_pooled.reset(new char[strlen(name) + 1]);
                     strcpy(name_pooled.get(), name);
-                    componentId = ComponentId(componentName_pooled.get(), EvseId(stored["evseId"] | -1, stored["connectorId"] | -1));
+                    if(componentInstance){
+                        componentInstance_pooled.reset(new char[strlen(componentInstance) + 1]);
+                        strcpy(componentInstance_pooled.get(), componentInstance);
+                    }   
+                    if(instance){
+                        instance_pooled.reset(new char[strlen(instance) + 1]);
+                        strcpy(instance_pooled.get(), instance);
+                    }   
+                    componentId = ComponentId(componentName_pooled.get(), componentInstance_pooled.get(), EvseId(stored["evseId"] | -1, stored["connectorId"] | -1));
                     var = createVariable(type, Variable::AttributeTypeSet()); // todo: only actual now
                     var->setComponentId(componentId);
                     var->setName(name_pooled.get());
+                    var->setInstance(instance_pooled.get());
                 }
                 if (stored.containsKey("value"))
                 {
@@ -185,6 +198,12 @@ namespace MicroOcpp
                     // allocated key, need to store
                     keyPool.push_back(std::move(componentName_pooled));
                     keyPool.push_back(std::move(name_pooled));
+                    if(componentInstance_pooled){
+                        keyPool.push_back(std::move(componentInstance_pooled));
+                    }
+                    if(instance_pooled){
+                        keyPool.push_back(std::move(instance_pooled));
+                    }
                 }
                 add(var);
             }
@@ -259,7 +278,9 @@ namespace MicroOcpp
                         break;
                     }
                 }
-                // todo componentInstance
+                if(var.getComponentId().instance){
+                    stored["componentInstance"] = var.getComponentId().instance;
+                }
                 if (var.getComponentId().evse.id > 0)
                 {
                     stored["evseId"] = var.getComponentId().evse.id;
@@ -268,7 +289,11 @@ namespace MicroOcpp
                 {
                     stored["connectorId"] = var.getComponentId().evse.connectorId;
                 }
-                // todo instance,valTarget,valMin,valMin
+                if (var.getInstance())
+                {
+                    stored["instance"] = var.getInstance();
+                }
+                // todo valTarget,valMin,valMin
             }
 
             bool success = FilesystemUtils::storeJson(filesystem, getFilename(), doc);
@@ -306,12 +331,13 @@ namespace MicroOcpp
             return variables[i].get();
         }
 
-        std::shared_ptr<Variable> getVariable(const ComponentId &component, const char *variableName) const override
+        std::shared_ptr<Variable> getVariable(const ComponentId &component, const char *variableName, const char *instanceName=nullptr) const override
         {
             for (auto it = variables.begin(); it != variables.end(); it++)
             {
                 if (!strcmp((*it)->getName(), variableName) &&
-                    (*it)->getComponentId().equals(component))
+                    (*it)->getComponentId().equals(component) &&
+                    ((!instanceName && !(*it)->getInstance() || !strcmp((*it)->getInstance(), instanceName))))
                 {
                     return *it;
                 }

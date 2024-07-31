@@ -110,11 +110,12 @@ public:
 // ComponentType (2.16)
 struct ComponentId {
     const char *name; // zero copy
-    //const char *instance; // not supported in this implementation
+    const char *instance=nullptr; // zero copy
     EvseId evse {-1};
 
     ComponentId(const char *name = nullptr);
     ComponentId(const char *name, EvseId evse);
+    ComponentId(const char *name, const char* instance, EvseId evse=-1);
 
     bool equals(const ComponentId& other) const;
 };
@@ -161,6 +162,7 @@ public:
     };
 private:
     const char *variableName = nullptr;
+    const char *variableInstance = nullptr;
     ComponentId component;
 
     // VariableCharacteristicsType (2.51)
@@ -188,21 +190,27 @@ public:
     void setName(const char *name); //zero-copy
     const char *getName() const;
 
+    void setInstance(const char *name); //zero-copy
+    const char *getInstance() const;
+
     void setComponentId(const ComponentId& componentId); //zero-copy
     const ComponentId& getComponentId() const;
 
     // set Value of Variable
-    virtual void setInt(int val, AttributeType attrType = AttributeType::Actual);
-    virtual void setBool(bool val, AttributeType attrType = AttributeType::Actual);
-    virtual bool setString(const char *val, AttributeType attrType = AttributeType::Actual);
+    virtual void setInt(int val, AttributeType attrType);
+    virtual void setBool(bool val, AttributeType attrType);
+    virtual bool setString(const char *val, AttributeType attrType);
+    virtual void setInt(int val) override {setInt(val,AttributeType::Actual);}
+    virtual void setBool(bool val) override { setBool(val, AttributeType::Actual);}
+    virtual bool setString(const char *val) override {setString(val,AttributeType::Actual);}
 
     // get Value of Variable
     virtual int getInt(AttributeType attrType);
     virtual bool getBool(AttributeType attrType);
     virtual const char *getString(AttributeType attrType); //always returns c-string (empty if undefined)
-    virtual int getInt() override {return getInt(AttributeType::Actual);};
-    virtual bool getBool() override {return getBool(AttributeType::Actual);};
-    virtual const char *getString() override {return getString(AttributeType::Actual);};
+    virtual int getInt() override {return getInt(AttributeType::Actual);}
+    virtual bool getBool() override {return getBool(AttributeType::Actual);}
+    virtual const char *getString() override {return getString(AttributeType::Actual);}
     revision_t getValueRevision() override;
 
     virtual InternalDataType getInternalDataType() = 0; //corresponds to MO internal value representation

@@ -17,7 +17,7 @@ private:
     Context& context;
 
     unsigned long lastHeartbeat;
-    std::shared_ptr<Configuration> heartbeatIntervalInt;
+    std::shared_ptr<ICfg> heartbeatIntervalInt;
 
 public:
     HeartbeatService(Context& context);

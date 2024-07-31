@@ -6,6 +6,7 @@
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/Boot/BootService.h>
 #include <MicroOcpp/Core/Configuration.h>
+#include <MicroOcpp/Model/Variables/VariableService.h>
 #include <MicroOcpp/Version.h>
 #include <MicroOcpp/Debug.h>
 
@@ -71,10 +72,25 @@ void BootNotification::processConf(JsonObject payload) {
     if (status == RegistrationStatus::Accepted) {
         //only write if in valid range
         if (interval >= 1) {
-            auto heartbeatIntervalInt = declareConfiguration<int>("HeartbeatInterval", 86400);
+            std::shared_ptr<ICfg> heartbeatIntervalInt;
+#if MO_ENABLE_V201
+            if(model.getVersion().major==2){
+                heartbeatIntervalInt = model.getVariableService()->declareVariable<int>("OCPPCommCtrlr", "HeartbeatInterval", 86400);
+            }else
+#endif
+            {
+                heartbeatIntervalInt = declareConfiguration<int>("HeartbeatInterval", 86400);
+            }
             if (heartbeatIntervalInt && interval != heartbeatIntervalInt->getInt()) {
                 heartbeatIntervalInt->setInt(interval);
+#if MO_ENABLE_V201
+            if(model.getVersion().major==2){
+                model.getVariableService()->commit();
+            }else
+#endif
+            {
                 configuration_save();
+            }
             }
         }
     }

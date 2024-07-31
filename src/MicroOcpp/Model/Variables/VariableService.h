@@ -71,7 +71,7 @@ public:
     VariableService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem);
 
     template <class T> 
-    std::shared_ptr<Variable> declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath = MO_VARIABLE_FN, Variable::Mutability mutability = Variable::Mutability::ReadWrite, Variable::AttributeTypeSet attributes = Variable::AttributeTypeSet(), bool rebootRequired = false, bool accessible = true);
+    std::shared_ptr<Variable> declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath = MO_VARIABLE_FN, Variable::Mutability mutability = Variable::Mutability::ReadWrite, const char*instance = nullptr, Variable::AttributeTypeSet attributes = Variable::AttributeTypeSet(), bool rebootRequired = false, bool accessible = true);
 
     bool commit();
     bool load();
@@ -83,9 +83,9 @@ public:
     template <class T>
     bool registerValidator(const ComponentId& component, const char *name, std::function<bool(T)> validate);
 
-    SetVariableStatus setVariable(Variable::AttributeType attrType, const char *attrVal, const ComponentId& component, const char *variableName);
+    SetVariableStatus setVariable(Variable::AttributeType attrType, const char *attrVal, const ComponentId& component, const char* variableInstance, const char *variableName);
 
-    GetVariableStatus getVariable(Variable::AttributeType attrType, const ComponentId& component, const char *variableName, Variable **result);
+    GetVariableStatus getVariable(Variable::AttributeType attrType, const ComponentId& component, const char *variableName,  const char* instance,  Variable **result);
 
     GenericDeviceModelStatus getBaseReport(int requestId, ReportBase reportBase);
 };

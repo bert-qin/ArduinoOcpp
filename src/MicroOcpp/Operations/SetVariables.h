@@ -28,9 +28,11 @@ struct SetVariableData {
     Variable::AttributeType attributeType = Variable::AttributeType::Actual;
     const char *attributeValue; // will become invalid after processReq
     std::string componentName;
+    const char* componentInstance = nullptr;
     int componentEvseId = -1;
     int componentEvseConnectorId = -1;
     std::string variableName;
+    const char* variableInstance = nullptr;
 
     // SetVariableResultType
     SetVariableStatus attributeStatus;

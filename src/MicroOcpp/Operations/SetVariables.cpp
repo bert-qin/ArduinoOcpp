@@ -56,7 +56,9 @@ void SetVariables::processReq(JsonObject payload) {
 
         data.attributeValue = attributeValueCstr;
         data.componentName = componentNameCstr;
+        data.componentInstance = setVariable["component"]["instance"] | (const char*) nullptr;
         data.variableName = variableNameCstr;
+        data.variableInstance = setVariable["variable"]["instance"] | (const char*) nullptr;
 
         // TODO check against ConfigurationValueSize
 
@@ -82,8 +84,10 @@ void SetVariables::processReq(JsonObject payload) {
                 query.attributeType,
                 query.attributeValue,
                 ComponentId(query.componentName.c_str(), 
+                    query.componentInstance,
                     EvseId(query.componentEvseId, query.componentEvseConnectorId)),
-                query.variableName.c_str());
+                query.variableName.c_str(),
+                query.variableInstance);
     }
 
     if (!variableService.commit()) {
