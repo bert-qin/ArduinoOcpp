@@ -40,7 +40,7 @@ void ReserveNow::processReq(JsonObject payload) {
         expiryDateKey = "expiryDateTime";
         idTagKey = "idToken";
         reserveIdKey = "id";
-        if (payload[connectorIdKey]|0 < 0) {
+        if ((payload[connectorIdKey]|0) < 0) {
             errorCode = "FormationViolation";
             return;
         }

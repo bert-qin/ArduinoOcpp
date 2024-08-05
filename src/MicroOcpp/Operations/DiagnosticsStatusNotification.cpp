@@ -27,6 +27,8 @@ const char *DiagnosticsStatusNotification::cstrFromStatus(DiagnosticsStatus stat
         case (DiagnosticsStatus::Uploading):
             return "Uploading";
             break;
+        default:
+        break;
     }
     return nullptr; //cannot be reached
 }

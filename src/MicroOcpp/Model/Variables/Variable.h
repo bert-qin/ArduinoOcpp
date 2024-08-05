@@ -202,7 +202,7 @@ public:
     virtual bool setString(const char *val, AttributeType attrType);
     virtual void setInt(int val) override {setInt(val,AttributeType::Actual);}
     virtual void setBool(bool val) override { setBool(val, AttributeType::Actual);}
-    virtual bool setString(const char *val) override {setString(val,AttributeType::Actual);}
+    virtual bool setString(const char *val) override {return setString(val,AttributeType::Actual);}
 
     // get Value of Variable
     virtual int getInt(AttributeType attrType);

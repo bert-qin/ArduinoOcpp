@@ -214,7 +214,7 @@ std::unique_ptr<MeterValue> MeteringService::takeBeginMeterValue(int connectorId
     }
     auto& connector = connectors.at(connectorId);
     if (connector.get()) {
-        return std::move(connector->takeBeginMeterValue());
+        return connector->takeBeginMeterValue();
     }
     MO_DBG_ERR("Could not find connector");
     return nullptr;

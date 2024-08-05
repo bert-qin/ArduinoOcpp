@@ -19,10 +19,8 @@ class ConnectorTransactionStore {
 private:
     TransactionStore& context;
     const unsigned int connectorId;
-    const ProtocolVersion& version;
-
     std::shared_ptr<FilesystemAdapter> filesystem;
-    
+    const ProtocolVersion& version;
     std::deque<std::weak_ptr<ITransaction>> transactions;
 
 public:

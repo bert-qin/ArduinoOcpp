@@ -337,7 +337,7 @@ namespace MicroOcpp
             {
                 if (!strcmp((*it)->getName(), variableName) &&
                     (*it)->getComponentId().equals(component) &&
-                    ((!instanceName && !(*it)->getInstance() || (instanceName && (*it)->getInstance() && !strcmp((*it)->getInstance(), instanceName)))))
+                    (((!instanceName && !(*it)->getInstance()) || (instanceName && (*it)->getInstance() && !strcmp((*it)->getInstance(), instanceName)))))
                 {
                     return *it;
                 }
