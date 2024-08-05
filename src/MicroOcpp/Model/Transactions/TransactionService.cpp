@@ -378,9 +378,13 @@ void TransactionService::Evse::loop() {
     }
 
     if (txEvent) {
-        auto txEventRequest = makeRequest(new Ocpp201::TransactionEvent(context.getModel(), txEvent));
-        txEventRequest->setTimeout(0);
-        context.initiateRequest(std::move(txEventRequest));
+        if(txEvent->eventType == TransactionEventData::Type::Updated){
+            auto txEventRequest = makeRequest(new Ocpp201::TransactionEvent(context.getModel(), txEvent));
+            txEventRequest->setTimeout(0);
+            context.initiateRequest(std::move(txEventRequest));
+        }else{
+            transaction->txEvent = txEvent;
+        }
     }
 }
 

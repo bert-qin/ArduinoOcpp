@@ -237,7 +237,7 @@ public:
 
 namespace MicroOcpp {
 namespace Ocpp201 {
-
+class TransactionEventData;
 // TriggerReasonEnumType (3.82)
 enum class TransactionEventTriggerReason : uint8_t {
     UNDEFINED, // not part of OCPP
@@ -345,6 +345,7 @@ public:
     std::vector<std::unique_ptr<MeterValue>> clockMeterValue;
     std::vector<std::unique_ptr<MeterValue>> periodicMeterValue;
     std::vector<std::unique_ptr<MeterValue>> triggerMeterValue;
+    std::shared_ptr<TransactionEventData> txEvent = nullptr;
 };
 
 // TransactionEventRequest (1.60.1)

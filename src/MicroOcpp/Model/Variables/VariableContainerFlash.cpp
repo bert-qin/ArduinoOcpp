@@ -333,10 +333,8 @@ namespace MicroOcpp
 
         std::shared_ptr<Variable> getVariable(const ComponentId &component, const char *variableName, const char *instanceName=nullptr) const override
         {
-            int i = 0;
             for (auto it = variables.begin(); it != variables.end(); it++)
             {
-                i++;
                 if (!strcmp((*it)->getName(), variableName) &&
                     (*it)->getComponentId().equals(component) &&
                     ((!instanceName && !(*it)->getInstance() || (instanceName && (*it)->getInstance() && !strcmp((*it)->getInstance(), instanceName)))))
