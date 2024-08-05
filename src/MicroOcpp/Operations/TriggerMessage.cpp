@@ -40,11 +40,11 @@ void TriggerMessage::processReq(JsonObject payload) {
             if (connectorId < 0) {
                 auto nConnectors = mService->getNumConnectors();
                 for (decltype(nConnectors) cId = 0; cId < nConnectors; cId++) {
-                    context.initiatePreBootOperation(mService->takeTriggeredMeterValues(cId));
+                    context.getRequestQueue().sendRequestPreBoot(mService->takeTriggeredMeterValues(cId));
                     statusMessage = "Accepted";
                 }
             } else if (connectorId < mService->getNumConnectors()) {
-                context.initiatePreBootOperation(mService->takeTriggeredMeterValues(connectorId));
+                context.getRequestQueue().sendRequestPreBoot(mService->takeTriggeredMeterValues(connectorId));
                 statusMessage = "Accepted";
             } else {
                 //hehongyang, OCTT test case 055 need reject
@@ -95,13 +95,13 @@ void TriggerMessage::processReq(JsonObject payload) {
                     new Ocpp16::StatusNotification(i, connector->getStatus(), context.getModel().getClock().now()));
             statusNotification->setTimeout(60000);
 
-            context.initiatePreBootOperation(std::move(statusNotification));
+            context.getRequestQueue().sendRequestPreBoot(std::move(statusNotification));
             statusMessage = "Accepted";
         }
     } else {
         auto msg = context.getOperationRegistry().deserializeOperation(requestedMessage);
         if (msg) {
-            context.initiatePreBootOperation(std::move(msg));
+            context.getRequestQueue().sendRequestPreBoot(std::move(msg));
             statusMessage = "Accepted";
         } else {
             statusMessage = "NotImplemented";

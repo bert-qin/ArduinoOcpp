@@ -115,13 +115,13 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
     if (transaction && transaction->isRunning() && !transaction->isSilent()) {
         //check during transaction
 
-        if (!stopTxnData || stopTxnData->getTxNr() != transaction->getTxNr()) {
-            MO_DBG_WARN("reload stopTxnData");
-            //reload (e.g. after power cut during transaction)
-            stopTxnData = meterStore.getTxMeterData(*stopTxnSampledDataBuilder, transaction.get());
-        }
-    } else {
-        //check outside of transaction
+            if (!stopTxnData || stopTxnData->getTxNr() != transaction->getTxNr()) {
+                MO_DBG_WARN("reload stopTxnData, %s, for tx-%u-%u", stopTxnData ? "replace" : "first time", connectorId, transaction->getTxNr());
+                //reload (e.g. after power cut during transaction)
+                stopTxnData = meterStore.getTxMeterData(*stopTxnSampledDataBuilder, transaction.get());
+            }
+        } else {
+            //check outside of transaction
 
         if (connectorId != 0 && meterValuesInTxOnlyBool->getBool()) {
             //don't take any MeterValues outside of transactions on connectorIds other than 0
@@ -152,9 +152,8 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
                         stopTxnData->addTxData(std::move(alignedStopTx));
                     }
                 }
-
             }
-            
+
             Timestamp midnightBase = Timestamp(2010,0,0,0,0,0);
             auto intervall = timestampNow - midnightBase;
             intervall %= 3600 * 24;
@@ -239,7 +238,7 @@ std::unique_ptr<Operation> MeteringConnector::loop() {
                 }
             }
             lastSampleTime = mocpp_tick_ms();
-        }   
+        }
     }
 #endif
     if (clockAlignedDataIntervalInt->getInt() < 1 && meterValueSampleIntervalInt->getInt() < 1) {
@@ -320,6 +319,10 @@ std::shared_ptr<TransactionMeterData> MeteringConnector::endTxMeterData(ITransac
     }
 
     return std::move(stopTxnData);
+}
+
+void MeteringConnector::abortTxMeterData() {
+    stopTxnData.reset();
 }
 
 std::shared_ptr<TransactionMeterData> MeteringConnector::getStopTxMeterData(ITransaction *transaction) {

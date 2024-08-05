@@ -157,16 +157,18 @@ size_t AuthorizationService::getAuthCacheSize() {
 bool AuthorizationService::updateLocalList(JsonArray localAuthorizationListJson, int listVersion, bool differential) {
     DynamicJsonDocument doc(0);
 #if MO_ENABLE_V201
-    doc = DynamicJsonDocument(localAuthorizationListJson.memoryUsage());
-    JsonArray array = doc.to<JsonArray>();
-    for (size_t i = 0; i < localAuthorizationListJson.size(); i++) {
-        JsonObject item = array.createNestedObject();
-        item["idTag"] = localAuthorizationListJson[i]["idToken"]["idToken"];
-        if(localAuthorizationListJson[i].containsKey("idTokenInfo")){
-            item["idTagInfo"] = tokenToTagInfo(localAuthorizationListJson[i]["idTokenInfo"])->as<JsonObject>();
-        }    
+    if(context.getModel().getVersion().major ==2){
+        doc = DynamicJsonDocument(localAuthorizationListJson.memoryUsage());
+        JsonArray array = doc.to<JsonArray>();
+        for (size_t i = 0; i < localAuthorizationListJson.size(); i++) {
+            JsonObject item = array.createNestedObject();
+            item["idTag"] = localAuthorizationListJson[i]["idToken"]["idToken"];
+            if(localAuthorizationListJson[i].containsKey("idTokenInfo")){
+                item["idTagInfo"] = tokenToTagInfo(localAuthorizationListJson[i]["idTokenInfo"])->as<JsonObject>();
+            }    
+        }
+        localAuthorizationListJson = array;
     }
-    localAuthorizationListJson = array;
 #endif
     bool success = localAuthorizationList.readJson(localAuthorizationListJson, listVersion, differential, false);
 

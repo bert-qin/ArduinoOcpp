@@ -124,25 +124,27 @@ void TransactionService::Evse::loop() {
                 transaction->getStartSync().isRequested() && !transaction->getStopSync().isRequested() && !transaction->isActive() &&
                 (!stopTxReadyInput || stopTxReadyInput())) {
             // yes, stop running tx
+
+            if (transaction->getStopTimestamp() <= MIN_TIME) {
+                transaction->setStopTimestamp(model.getClock().now());
+                transaction->setStopBootNr(model.getBootNr());
+            }
+
+            transaction->getStopSync().setRequested();
+            transaction->getStopSync().setOpNr(context.getRequestQueue().getNextOpNr());
+
             if (transaction->isSilent()) {
                 MO_DBG_INFO("silent Transaction: omit StopTx");
                 connector->updateTxNotification(TxNotification::StopTx);
-                transaction->getStopSync().setRequested();
                 transaction->getStopSync().confirm();
                 if (auto mService = model.getMeteringService()) {
                     mService->removeTxMeterData(evseId, transaction->getTxNr());
                 }
                 model.getTransactionStore()->remove(evseId, transaction->getTxNr());
-                model.getTransactionStore()->setTxEnd(evseId, transaction->getTxNr());
                 transaction = nullptr;
                 return;
             }
-
-            if (transaction->getStopTimestamp() <= MIN_TIME) {
-                    transaction->setStopTimestamp(model.getClock().now());
-                    transaction->setStopBootNr(model.getBootNr());
-                }
-
+            
             transaction->commit();
             connector->updateTxNotification(TxNotification::StopTx);
 
@@ -172,11 +174,8 @@ void TransactionService::Evse::loop() {
     
     if (!txStopCondition) {
         // start tx?
-
         bool txStartCondition = false;
-
         TransactionEventTriggerReason triggerReason = TransactionEventTriggerReason::UNDEFINED;
-
         // tx should be started?
         if (txService.isTxStartPoint(TxStartStopPoint::PowerPathClosed) &&
                     (!connectorPluggedInput || connectorPluggedInput()) &&
@@ -231,11 +230,13 @@ void TransactionService::Evse::loop() {
                 transaction->setStartBootNr(model.getBootNr());
             }
 
+            transaction->getStartSync().setRequested();
+            transaction->getStartSync().setOpNr(context.getRequestQueue().getNextOpNr());
+
             connector->updateTxNotification(TxNotification::StartTx);
 
             if (transaction->isSilent()) {
                 MO_DBG_INFO("silent Transaction: omit StartTx");
-                transaction->getStartSync().setRequested();
                 transaction->getStartSync().confirm();
                 transaction->commit();
                 return;

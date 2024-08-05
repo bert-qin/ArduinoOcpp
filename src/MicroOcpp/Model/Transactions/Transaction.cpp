@@ -35,7 +35,6 @@ bool Transaction::setStopReason(const char *reason) {
 
 namespace MicroOcpp{
 namespace Ocpp201{
-    
 bool Transaction::setTransactionIdStr(const char* transactionId) {
     auto ret = snprintf(this->transactionId, MO_TXID_LEN_MAX + 1, "%s", transactionId);
     return ret >= 0 && ret < MO_TXID_LEN_MAX + 1;
@@ -70,6 +69,7 @@ bool Transaction::setStopIdTag(const char *idTag){
         stopIdToken = std::unique_ptr<IdToken>(new IdToken(idTag));
         notifyStopIdToken = true;
     }
+    return true;
 }
 
 }

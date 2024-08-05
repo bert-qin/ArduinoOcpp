@@ -69,6 +69,8 @@ public:
 
     std::shared_ptr<TransactionMeterData> endTxMeterData(ITransaction *transaction);
 
+    void abortTxMeterData();
+
     std::shared_ptr<TransactionMeterData> getStopTxMeterData(ITransaction *transaction);
 
     bool existsSampler(const char *measurand, size_t len);

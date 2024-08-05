@@ -129,9 +129,9 @@ VariableContainer *VariableService::declareContainer(const char *filename, bool 
     return container.get();
 }
 
-std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, bool accessible) {
+std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, const char* instance, bool accessible) {
     for (auto& container : containers) {
-        if (auto variable = container->getVariable(component, name)) {
+        if (auto variable = container->getVariable(component, name, instance)) {
             if (variable->isDetached()) {
                 continue;
             }
@@ -143,7 +143,7 @@ std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataTyp
             if (container->isAccessible() != accessible) {
                 MO_DBG_ERR("conflicting accessibility for %s", name);
             }
-            container->loadStaticKey(*variable,component, name);
+            container->loadStaticKey(*variable,component, name,instance);
             return variable;
         }
     }
@@ -153,8 +153,6 @@ std::shared_ptr<Variable> VariableService::getVariable(Variable::InternalDataTyp
 VariableService::VariableService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem) : context(context), filesystem(filesystem) {
     declareVariable<int>("OCPPCommCtrlr", "MessageTimeout", 30, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"Default");
     declareVariable<const char*>("OCPPCommCtrlr", "FileTransferProtocols", "HTTP,HTTPS", MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
-    declareVariable<int>("OCPPCommCtrlr", "MessageAttemptInterval", 60, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"TransactionEvent");
-    declareVariable<int>("OCPPCommCtrlr", "MessageAttempts", 3, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly,"TransactionEvent");
     declareVariable<const char*>("OCPPCommCtrlr", "NetworkConfigurationPriority", "3,2,1,0", MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
     declareVariable<int>("OCPPCommCtrlr", "NetworkProfileConnectionAttempts",3, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
     declareVariable<int>("OCPPCommCtrlr", "OfflineThreshold",30, MO_VARIABLE_VOLATILE, Variable::Mutability::ReadOnly);
@@ -233,7 +231,7 @@ template<> Variable::InternalDataType getInternalDataType<const char*>() {return
 template<class T>
 std::shared_ptr<Variable> VariableService::declareVariable(const ComponentId& component, const char *name, T factoryDefault, const char *containerPath, Variable::Mutability mutability, const char*instance, Variable::AttributeTypeSet attributes, bool rebootRequired, bool accessible) {
 
-    auto res = getVariable(getInternalDataType<T>(), component, name, accessible);
+    auto res = getVariable(getInternalDataType<T>(), component, name, instance, accessible);
     if (!res) {
         auto container = declareContainer(containerPath, accessible);
         if (!container) {
@@ -441,7 +439,7 @@ GetVariableStatus VariableService::getVariable(Variable::AttributeType attrType,
                 foundComponent = true;
 
                 if (!strcmp(variable->getName(), variableName) &&
-                ((!variable->getInstance() && !instance) ||  !strcmp(variable->getInstance(), instance))) {
+                ((!variable->getInstance() && !instance) ||  (variable->getInstance() && instance && !strcmp(variable->getInstance(), instance)))) {
                     // found variable. Search terminated in this block
 
                     if (variable->getMutability() == Variable::Mutability::WriteOnly) {

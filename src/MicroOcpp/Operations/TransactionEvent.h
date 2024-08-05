@@ -18,6 +18,7 @@ class Model;
 namespace Ocpp201 {
 
 class TransactionEventData;
+class Transaction;
 
 class TransactionEvent : public Operation {
 private:
@@ -28,16 +29,14 @@ private:
 public:
 
     TransactionEvent(Model& model, std::shared_ptr<TransactionEventData> txEvent);
+    TransactionEvent(Model& model, std::shared_ptr<Transaction> transaction, bool started);
 
     const char* getOperationType() override;
-
-    void initiate(StoredOperationHandler *opStore) override;
-    bool restore(StoredOperationHandler *opStore) override;
 
     std::unique_ptr<DynamicJsonDocument> createReq() override;
 
     void processConf(JsonObject payload) override;
-    
+
     bool processErr(const char *code, const char *description, JsonObject details) override;
 
     const char *getErrorCode() override {return errorCode;}

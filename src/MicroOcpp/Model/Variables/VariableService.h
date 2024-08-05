@@ -65,7 +65,7 @@ private:
 
     VariableContainer *declareContainer(const char *filename, bool accessible);
 
-    std::shared_ptr<Variable> getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, bool accessible);
+    std::shared_ptr<Variable> getVariable(Variable::InternalDataType type, const ComponentId& component, const char *name, const char* instance, bool accessible);
 
 public:
     VariableService(Context& context, std::shared_ptr<FilesystemAdapter> filesystem);

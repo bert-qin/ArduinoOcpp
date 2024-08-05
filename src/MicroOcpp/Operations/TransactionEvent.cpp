@@ -11,7 +11,6 @@
 #include <MicroOcpp/Model/Model.h>
 #include <MicroOcpp/Model/Transactions/Transaction.h>
 #include <MicroOcpp/Debug.h>
-#include <MicroOcpp/Core/RequestStore.h>
 #include <MicroOcpp/Model/Authorization/AuthorizationService.h>
 #include <MicroOcpp/Model/Metering/MeteringService.h>
 #include <MicroOcpp/Model/Transactions/TransactionStore.h>
@@ -24,119 +23,8 @@ TransactionEvent::TransactionEvent(Model& model, std::shared_ptr<TransactionEven
 
 }
 
-const char* TransactionEvent::getOperationType() {
-    return "TransactionEvent";
-}
-
-void TransactionEvent::initiate(StoredOperationHandler *opStore) {
-    if (!txEvent || !txEvent->transaction) {
-        MO_DBG_ERR("initialization error");
-        return;
-    }
-
-    auto transaction = txEvent->transaction;
-    bool needCommit = false;
-
-    if (txEvent->eventType == TransactionEventData::Type::Started) {
-        if (transaction->getStartSync().isRequested()) {
-            MO_DBG_ERR("initialization error");
-            return;
-        }
-
-        transaction->getStartSync().setRequested();
-        needCommit = true;
-    }else if (txEvent->eventType == TransactionEventData::Type::Ended) {
-        if (transaction->getStopSync().isRequested()) {
-            MO_DBG_ERR("initialization error");
-            return;
-        }
-
-        transaction->getStopSync().setRequested();
-        needCommit = true;
-    }else{
-        // do nothing
-    }
-
-    //commit operation and tx
-    if(needCommit){
-        transaction->commit();
-        auto payload = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(JSON_OBJECT_SIZE(3)));
-        (*payload)["connectorId"] = transaction->getConnectorId();
-        (*payload)["txNr"] = transaction->getTxNr();
-        (*payload)["started"] = txEvent->eventType == TransactionEventData::Type::Started; // is started or ended event
-
-        if (opStore) {
-            opStore->setPayload(std::move(payload));
-            opStore->commit();
-        }
-    }
-
-    MO_DBG_INFO("TransactionEvent initiated");
-}
-
-bool TransactionEvent::restore(StoredOperationHandler *opStore) {
-    if (!opStore) {
-        MO_DBG_ERR("invalid argument");
-        return false;
-    }
-
-    auto payload = opStore->getPayload();
-    if (!payload) {
-        MO_DBG_ERR("memory corruption");
-        return false;
-    }
-
-    int connectorId = (*payload)["connectorId"] | -1;
-    int txNr = (*payload)["txNr"] | -1;
-    if (connectorId < 0 || txNr < 0) {
-        MO_DBG_ERR("record incomplete");
-        return false;
-    }
-
-    auto txStore = model.getTransactionStore();
-
-    if (!txStore) {
-        MO_DBG_ERR("invalid state");
-        return false;
-    }
-    auto transaction = std::static_pointer_cast<Ocpp201::Transaction>(txStore->getTransaction(connectorId, txNr));
-    if (!transaction) {
-        MO_DBG_ERR("referential integrity violation");
-
-        //clean up possible tx records
-        if (auto mSerivce = model.getMeteringService()) {
-            mSerivce->removeTxMeterData(connectorId, txNr);
-        }
-        return false;
-    }
-
-    if (transaction->isSilent()) {
-        //transaction has been set silent after initializing StopTx - discard operation record
-        MO_DBG_WARN("tx has been set silent - discard StopTx");
-
-        //clean up possible tx records
-        if (auto mSerivce = model.getMeteringService()) {
-            mSerivce->removeTxMeterData(connectorId, txNr);
-        }
-        return false;
-    }
-
-    if (transaction->getStartTimestamp() < MIN_TIME &&
-            transaction->getStartBootNr() != model.getBootNr()) {
-        //time not set, cannot be restored anymore -> invalid tx
-        MO_DBG_ERR("cannot recover tx from previus run");
-
-        //clean up possible tx records
-        if (auto mSerivce = model.getMeteringService()) {
-            mSerivce->removeTxMeterData(connectorId, txNr);
-        }
-
-        transaction->setSilent();
-        transaction->setInactive();
-        transaction->commit();
-        return false;
-    }
-    bool started = (*payload)["started"] | false;
+TransactionEvent::TransactionEvent(Model& model, std::shared_ptr<Transaction> transaction, bool started)
+        : model(model){
     txEvent = std::make_shared<TransactionEventData>(transaction, started?0:transaction->getSeqNo());
     if(started){
         txEvent->eventType = TransactionEventData::Type::Started;
@@ -163,8 +51,10 @@ bool TransactionEvent::restore(StoredOperationHandler *opStore) {
     txEvent->offline = true;
     txEvent->triggerReason = TransactionEventTriggerReason::Trigger;
     txEvent->evse = EvseId(transaction->getConnectorId(),1);
+}
 
-    return true;
+const char* TransactionEvent::getOperationType() {
+    return "TransactionEvent";
 }
 
 std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {

@@ -27,11 +27,22 @@ class SendStatus {
 private:
     bool requested = false;
     bool confirmed = false;
+    
+    unsigned int opNr = 0;
+    unsigned int attemptNr = 0;
+    Timestamp attemptTime = MIN_TIME;
 public:
     void setRequested() {this->requested = true;}
     bool isRequested() {return requested;}
     void confirm() {confirmed = true;}
     bool isConfirmed() {return confirmed;}
+    void setOpNr(unsigned int opNr) {this->opNr = opNr;}
+    unsigned int getOpNr() {return opNr;}
+    void advanceAttemptNr() {attemptNr++;}
+    void setAttemptNr(unsigned int attemptNr) {this->attemptNr = attemptNr;}
+    unsigned int getAttemptNr() {return attemptNr;}
+    const Timestamp& getAttemptTime() {return attemptTime;}
+    void setAttemptTime(const Timestamp& timestamp) {attemptTime = timestamp;}
 };
 
 class ITransaction{
@@ -288,6 +299,8 @@ public:
     void sendMeterValue(std::vector<std::unique_ptr<MeterValue>>&& meterValue) override;
     const char *getIdTag() override {return idToken.get()?idToken.get():ITransaction::getIdTag();}
     bool setIdTag(const char *idTag) override {idToken = IdToken(idTag);return true;}
+    const char *getParentIdTag() override {return parentIdToken.get()?parentIdToken.get():ITransaction::getIdTag();}
+    bool setParentIdTag(const char *idTag) override {parentIdToken = IdToken(idTag);return true;}
     void setConnectorId(unsigned int connectorId) override {ITransaction::setConnectorId(connectorId);notifyEvseId=true;}
     void setAuthorized() override {ITransaction::setAuthorized();notifyIdToken=true;}
     int getRemoteStartId() override {return remoteStartId;}
@@ -311,6 +324,7 @@ public:
      */
     unsigned int seqNoCounter = 0; // increment by 1 for each event
     IdToken idToken;
+    IdToken parentIdToken;
     char transactionId [MO_TXID_LEN_MAX + 1] = {'\0'};
     int remoteStartId = -1;
 

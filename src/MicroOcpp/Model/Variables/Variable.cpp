@@ -24,7 +24,7 @@ ComponentId::ComponentId(const char *name, const char* instance, EvseId evse) : 
 
 bool ComponentId::equals(const ComponentId& other) const {
     return !strcmp(name, other.name) &&
-        ((!instance  && !other.instance) || !strcmp(instance, other.instance)) && //instance undefined or equal
+        ((!instance  && !other.instance) || (instance && other.instance && !strcmp(instance, other.instance))) && //instance undefined or equal
         ((evse.id < 0 && other.evse.id < 0) || (evse.id == other.evse.id)) && // evseId undefined or equal
         ((evse.connectorId < 0 && other.evse.connectorId < 0) || (evse.connectorId == other.evse.connectorId)); // connectorId undefined or equal
 }

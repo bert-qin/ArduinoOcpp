@@ -333,11 +333,13 @@ namespace MicroOcpp
 
         std::shared_ptr<Variable> getVariable(const ComponentId &component, const char *variableName, const char *instanceName=nullptr) const override
         {
+            int i = 0;
             for (auto it = variables.begin(); it != variables.end(); it++)
             {
+                i++;
                 if (!strcmp((*it)->getName(), variableName) &&
                     (*it)->getComponentId().equals(component) &&
-                    ((!instanceName && !(*it)->getInstance() || !strcmp((*it)->getInstance(), instanceName))))
+                    ((!instanceName && !(*it)->getInstance() || (instanceName && (*it)->getInstance() && !strcmp((*it)->getInstance(), instanceName)))))
                 {
                     return *it;
                 }
@@ -345,13 +347,16 @@ namespace MicroOcpp
             return nullptr;
         }
 
-        void loadStaticKey(Variable& var, const ComponentId& component, const char *variableName) override {
+        void loadStaticKey(Variable& var, const ComponentId& component, const char *variableName, const char* instanceName) override {
             const char* componentName = var.getComponentId().name;
             const char* name = var.getName();
+            const char* instance = var.getInstance();
             var.setComponentId(component);
             var.setName(variableName);
+            var.setInstance(instanceName);
             clearKeyPool(componentName);
             clearKeyPool(name);
+            clearKeyPool(instance);
         }
     };
 
