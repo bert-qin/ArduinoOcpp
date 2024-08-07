@@ -130,7 +130,7 @@ public:
     virtual void setMeterStop(int32_t meter) {}
 
     virtual const char *getStopReason() {return "";}
-    virtual bool setStopReason(const char *reason){return false;}
+    virtual bool setStopReason(const char *reason){return true;}
 
     virtual const char *getStopIdTag() {return "";}
     virtual bool setStopIdTag(const char *idTag) {return false;}

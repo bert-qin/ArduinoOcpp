@@ -124,9 +124,8 @@ namespace MicroOcpp
                     MO_DBG_ERR("corrupt config");
                     continue;
                 }
-                const char* componentInstance = stored["componentInstance"]|nullptr;
-                const char* instance = stored["instance"]|nullptr;
-
+                const char* componentInstance = stored.containsKey("componentInstance")?(stored["componentInstance"] | ""):nullptr;
+                const char* instance = stored.containsKey("instance")?(stored["instance"] | ""):nullptr;
                 std::unique_ptr<char[]> componentName_pooled;
                 std::unique_ptr<char[]> name_pooled;
                 std::unique_ptr<char[]> componentInstance_pooled = nullptr;
@@ -281,11 +280,11 @@ namespace MicroOcpp
                 if(var.getComponentId().instance){
                     stored["componentInstance"] = var.getComponentId().instance;
                 }
-                if (var.getComponentId().evse.id > 0)
+                if (var.getComponentId().evse.id >= 0)
                 {
                     stored["evseId"] = var.getComponentId().evse.id;
                 }
-                if (var.getComponentId().evse.connectorId > 0)
+                if (var.getComponentId().evse.connectorId >= 0)
                 {
                     stored["connectorId"] = var.getComponentId().evse.connectorId;
                 }
