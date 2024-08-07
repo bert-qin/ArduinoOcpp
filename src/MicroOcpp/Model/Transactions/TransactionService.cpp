@@ -18,7 +18,6 @@
 #include <MicroOcpp/Operations/TransactionEvent.h>
 #include <MicroOcpp/Operations/RequestStartTransaction.h>
 #include <MicroOcpp/Operations/RequestStopTransaction.h>
-#include <MicroOcpp/Core/SimpleRequestFactory.h>
 #include <MicroOcpp/Debug.h>
 #include <MicroOcpp/Model/Metering/MeteringService.h>
 #include <MicroOcpp/Model/Transactions/TransactionStore.h>

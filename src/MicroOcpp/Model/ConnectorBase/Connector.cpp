@@ -27,7 +27,7 @@
 #include <MicroOcpp/Model/Transactions/TransactionService.h>
 #include <MicroOcpp/Model/Variables/VariableService.h>
 
-#include <MicroOcpp/Core/SimpleRequestFactory.h>
+#include <MicroOcpp/Core/Request.h>
 #include <MicroOcpp/Core/Connection.h>
 
 #ifndef MO_TX_CLEAN_ABORTED
