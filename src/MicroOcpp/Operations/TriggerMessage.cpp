@@ -40,8 +40,11 @@ void TriggerMessage::processReq(JsonObject payload) {
             if (connectorId < 0) {
                 auto nConnectors = mService->getNumConnectors();
                 for (decltype(nConnectors) cId = 0; cId < nConnectors; cId++) {
-                    context.getRequestQueue().sendRequestPreBoot(mService->takeTriggeredMeterValues(cId));
-                    statusMessage = "Accepted";
+                    auto request = mService->takeTriggeredMeterValues(cId);
+                    if(request){
+                        context.getRequestQueue().sendRequestPreBoot(std::move(request));
+                        statusMessage = "Accepted";
+                    }
                 }
             } else if (connectorId < mService->getNumConnectors()) {
                 context.getRequestQueue().sendRequestPreBoot(mService->takeTriggeredMeterValues(connectorId));
