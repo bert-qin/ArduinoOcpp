@@ -5,7 +5,7 @@
 #include <MicroOcpp/Model/SmartCharging/SmartChargingService.h>
 #include <MicroOcpp/Debug.h>
 #include <MicroOcpp/Core/Context.h>
-#include <MicroOcpp/Core/SimpleRequestFactory.h>
+#include <MicroOcpp/Core/Request.h>
 
 #include <functional>
 
