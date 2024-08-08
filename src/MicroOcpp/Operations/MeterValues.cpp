@@ -68,9 +68,9 @@ std::unique_ptr<DynamicJsonDocument> MeterValues::createReq() {
     if (transaction) { //add txId if MVs are assigned to a tx with txId
 #if MO_ENABLE_V201
         if(version.major == 2){
-            if(strlen(transaction->getTransactionIdStr())>0){
-                payload["transactionId"] = transaction->getTransactionIdStr();
-            }
+            // if(strlen(transaction->getTransactionIdStr())>0){
+            //     payload["transactionId"] = transaction->getTransactionIdStr();
+            // }
         }else
 #endif
         {

@@ -99,7 +99,7 @@ extern "C" unsigned long mocpp_tick_ms_unix();
 #if MO_PLATFORM == MO_PLATFORM_UNIX
 #define MO_MAX_JSON_CAPACITY 16384
 #else
-#define MO_MAX_JSON_CAPACITY 4096
+#define MO_MAX_JSON_CAPACITY 8192
 #endif
 #endif
 

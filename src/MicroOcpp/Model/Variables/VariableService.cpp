@@ -492,15 +492,27 @@ GenericDeviceModelStatus VariableService::getBaseReport(int requestId, ReportBas
         return GenericDeviceModelStatus_EmptyResultSet;
     }
 
-    auto notifyReport = makeRequest(new Ocpp201::NotifyReport(
-            context.getModel(), 
-            requestId,
-            context.getModel().getClock().now(),
-            false,
-            0,
-            variables));
+    std::vector<std::vector<Variable*>> groupedVariables;
 
-    context.initiateRequest(std::move(notifyReport));
+    for (size_t i = 0; i < variables.size(); i += MO_MAX_REPORT_ITEMS) {
+        auto start = variables.begin() + i;
+        auto end = (i + MO_MAX_REPORT_ITEMS < variables.size()) ? start + MO_MAX_REPORT_ITEMS : variables.end();
+        std::vector<Variable*> group(start, end);
+        groupedVariables.push_back(group);
+    }
+
+    for (size_t i = 0; i < groupedVariables.size(); i++) {
+        auto notifyReport = makeRequest(new Ocpp201::NotifyReport(
+                context.getModel(), 
+                requestId,
+                context.getModel().getClock().now(),
+                i != groupedVariables.size()-1,
+                i,
+                groupedVariables[i]));
+
+        context.initiateRequest(std::move(notifyReport));
+    }
+
 
     return GenericDeviceModelStatus_Accepted;
 }

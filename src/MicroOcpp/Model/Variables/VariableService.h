@@ -35,6 +35,14 @@
 #define MO_VARIABLE_INTERNAL_FN (MO_FILENAME_PREFIX "mo-vars.jsn")
 #endif
 
+#ifndef MO_MAX_REPORT_ITEMS
+#if MO_PLATFORM == MO_PLATFORM_UNIX
+#define MO_MAX_REPORT_ITEMS 8192
+#else
+#define MO_MAX_REPORT_ITEMS 30
+#endif
+#endif
+
 namespace MicroOcpp {
 
 template <class T>

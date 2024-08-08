@@ -132,7 +132,7 @@ std::unique_ptr<DynamicJsonDocument> TransactionEvent::createReq() {
     txEvent->timestamp.toJsonString(timestamp, JSONDATE_LENGTH + 1);
     payload["timestamp"] = timestamp;
 
-    const char *triggerReason = "";
+    const char *triggerReason = "Trigger";
     switch(txEvent->triggerReason) {
         case TransactionEventTriggerReason::UNDEFINED:
             MO_DBG_ERR("internal error");

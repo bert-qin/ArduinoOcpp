@@ -232,7 +232,7 @@ namespace MicroOcpp
 
             if (jsonCapacity > MO_MAX_JSON_CAPACITY)
             {
-                MO_DBG_ERR("variables JSON exceeds maximum capacity (%s, %zu entries). Crop variables file (by FCFS)", getFilename(), variables.size());
+                MO_DBG_ERR("variables JSON exceeds maximum capacity (%s, %zu entries,%u bytes). Crop variables file (by FCFS)", getFilename(), variables.size(), jsonCapacity);
                 jsonCapacity = MO_MAX_JSON_CAPACITY;
             }
 

@@ -81,6 +81,11 @@ std::unique_ptr<DynamicJsonDocument> NotifyReport::createReq() {
         capacity += JSON_OBJECT_SIZE(2); //variableCharacteristics composite: only send two data fields
     }
 
+    if (capacity > MO_MAX_JSON_CAPACITY)
+    {
+        MO_DBG_ERR("report JSON exceeds maximum capacity (%zu entries,%u bytes).", reportData.size(), capacity);
+        capacity = MO_MAX_JSON_CAPACITY;
+    }
     auto doc = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(capacity));
 
     JsonObject payload = doc->to<JsonObject>();
