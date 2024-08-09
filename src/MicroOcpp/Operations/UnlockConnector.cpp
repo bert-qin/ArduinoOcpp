@@ -42,8 +42,21 @@ void UnlockConnector::processReq(JsonObject payload) {
         // NotSupported
         return;
     }
-
-    connector->endTransaction(nullptr, "UnlockCommand");
+#if MO_ENABLE_V201
+    if(model.getVersion().major == 2){
+        auto txService = model.getTransactionService();
+        if (txService && txService->getEvse(connectorId) && txService->getEvse(connectorId)->getTransaction()) {
+            auto tx = txService->getEvse(eId)->getTransaction();
+            if (tx->isActive()) {
+                //Tx in progress. Check behavior
+                    txService->getEvse(eId)->abortTransaction(Transaction::StopReason::Remote, TransactionEventTriggerReason::UnlockCommand);
+            } 
+        }
+    }else
+#endif
+    {
+        connector->endTransaction(nullptr, "UnlockCommand");
+    }
     connector->updateTxNotification(TxNotification::RemoteStop);
 
     cbUnlockResult = unlockConnector();
