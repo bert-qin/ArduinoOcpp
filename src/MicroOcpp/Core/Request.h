@@ -23,6 +23,7 @@ class Request {
 private:
     std::string messageID {};
     std::unique_ptr<Operation> operation;
+    unsigned int opNr = 0;
     void setMessageID(const char *id);
     OnReceiveConfListener onReceiveConfListener = [] (JsonObject payload) {};
     OnReceiveReqListener onReceiveReqListener = [] (JsonObject payload) {};
@@ -45,7 +46,8 @@ public:
     ~Request();
 
     Operation *getOperation();
-
+    void setOpNr(unsigned int opNr) {this->opNr = opNr;}
+    unsigned int getOpNr() {return opNr;}
     void setTimeout(unsigned long timeout); //0 = disable timeout
     bool isTimeoutExceeded();
     void executeTimeout(); //call Timeout Listener

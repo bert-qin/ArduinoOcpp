@@ -59,6 +59,10 @@ unsigned int VolatileRequestQueue::getFrontRequestOpNr() {
         return NoOperation;
     }
 
+    if(requests[front]->getOpNr()){
+        return requests[front]->getOpNr();
+    }
+
     return priority;
 }
 
@@ -230,6 +234,7 @@ void RequestQueue::loop() {
 }
 
 void RequestQueue::sendRequest(std::unique_ptr<Request> op){
+    op->setOpNr(getNextOpNr());
     defaultSendQueue.pushRequestBack(std::move(op));
 }
 

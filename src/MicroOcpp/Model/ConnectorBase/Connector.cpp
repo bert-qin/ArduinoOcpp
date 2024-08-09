@@ -1611,10 +1611,10 @@ std::unique_ptr<Request> Connector::fetchFrontRequest()
             if (model.getVersion().major == 2)
             {
                 auto transaction = std::static_pointer_cast<Ocpp201::Transaction>(transactionFront);
-                if (transaction->txEvent)
+                if (transaction->startTxEvent)
                 {
-                    startTx = makeRequest(new Ocpp201::TransactionEvent(model, transaction->txEvent));
-                    transaction->txEvent = nullptr;
+                    startTx = makeRequest(new Ocpp201::TransactionEvent(model, transaction->startTxEvent));
+                    transaction->startTxEvent = nullptr;
                 }
                 else
                 {
@@ -1714,10 +1714,10 @@ std::unique_ptr<Request> Connector::fetchFrontRequest()
             if (model.getVersion().major == 2)
             {
                 auto transaction = std::static_pointer_cast<Ocpp201::Transaction>(transactionFront);
-                if (transaction->txEvent)
+                if (transaction->stopTxEvent)
                 {
-                    stopTx = makeRequest(new Ocpp201::TransactionEvent(model, transaction->txEvent));
-                    transaction->txEvent = nullptr;
+                    stopTx = makeRequest(new Ocpp201::TransactionEvent(model, transaction->stopTxEvent));
+                    transaction->stopTxEvent = nullptr;
                 }
                 else
                 {

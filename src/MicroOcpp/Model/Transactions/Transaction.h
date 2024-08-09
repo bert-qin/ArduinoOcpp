@@ -345,7 +345,8 @@ public:
     std::vector<std::unique_ptr<MeterValue>> clockMeterValue;
     std::vector<std::unique_ptr<MeterValue>> periodicMeterValue;
     std::vector<std::unique_ptr<MeterValue>> triggerMeterValue;
-    std::shared_ptr<TransactionEventData> txEvent = nullptr;
+    std::shared_ptr<TransactionEventData> startTxEvent = nullptr;
+    std::shared_ptr<TransactionEventData> stopTxEvent = nullptr;
 };
 
 // TransactionEventRequest (1.60.1)

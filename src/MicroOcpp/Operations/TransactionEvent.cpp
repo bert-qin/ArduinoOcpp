@@ -49,7 +49,7 @@ TransactionEvent::TransactionEvent(Model& model, std::shared_ptr<Transaction> tr
         }
     }
     txEvent->offline = true;
-    txEvent->triggerReason = TransactionEventTriggerReason::Trigger;
+    txEvent->triggerReason = TransactionEventTriggerReason::AbnormalCondition;
     txEvent->evse = EvseId(transaction->getConnectorId(),1);
 }
 
