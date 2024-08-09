@@ -382,7 +382,7 @@ void TransactionService::Evse::loop() {
             txEventRequest->setTimeout(0);
             context.initiateRequest(std::move(txEventRequest));
         }else{
-            transaction->txEvent = txEvent;
+            transaction->txEvent = nullptr;
         }
     }
 }

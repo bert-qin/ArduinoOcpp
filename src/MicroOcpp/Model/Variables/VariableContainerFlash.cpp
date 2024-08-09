@@ -203,8 +203,8 @@ namespace MicroOcpp
                     if(instance_pooled){
                         keyPool.push_back(std::move(instance_pooled));
                     }
+                    add(var);
                 }
-                add(var);
             }
 
             variablesUpdated();

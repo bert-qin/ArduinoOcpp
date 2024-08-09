@@ -513,7 +513,6 @@ GenericDeviceModelStatus VariableService::getBaseReport(int requestId, ReportBas
         context.initiateRequest(std::move(notifyReport));
     }
 
-
     return GenericDeviceModelStatus_Accepted;
 }
 
