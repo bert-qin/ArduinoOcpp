@@ -60,6 +60,10 @@ typedef struct{
     int patch;
 }ProtocolVersionC;
 
+const ProtocolVersionC VER_C_AUTO = {0,0,0};
+const ProtocolVersionC VER_C_1_6_J = {1,6,0};
+const ProtocolVersionC VER_C_2_0_1 = {2,0,1};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
