@@ -1218,7 +1218,7 @@ void Connector::endTransaction(const char *idTag, const char *reason)
     }
     // bert add for parent idtag
     // idTag must be different ,check parent idTag only.
-    if (idTag && strcmp(idTag, transaction->getIdTag()))
+    if (idTag && strcasecmp(idTag, transaction->getIdTag()))
     {
         if (strlen(transaction->getParentIdTag()) == 0)
         {
@@ -1245,7 +1245,7 @@ void Connector::endTransaction(const char *idTag, const char *reason)
                 localAuth = nullptr;
             }
 
-            if (!strcmp(transaction->getParentIdTag(), localAuth ? localAuth->getParentIdTag() : ""))
+            if (!strcasecmp(transaction->getParentIdTag(), localAuth ? localAuth->getParentIdTag() : ""))
             {
                 isParentIdTagMatch = true;
             }
@@ -1291,7 +1291,7 @@ void Connector::endTransaction(const char *idTag, const char *reason)
                                             {
                                                 JsonObject idTagInfo = response["idTagInfo"];
 
-                                                if (strcmp("Accepted", idTagInfo["status"] | "") == 0 && strcmp(tx->getParentIdTag(), idTagInfo["parentIdTag"] | "") == 0)
+                                                if (strcmp("Accepted", idTagInfo["status"] | "") == 0 && strcasecmp(tx->getParentIdTag(), idTagInfo["parentIdTag"] | "") == 0)
                                                 {
                                                     endTransaction_authorized(nullptr, nullptr);
                                                 }

@@ -33,7 +33,7 @@ MicroOcpp::AuthorizationData *AuthorizationList::get(const char *idTag) {
     int r = ((int) localAuthorizationList.size()) - 1;
     while (l <= r) {
         auto m = (r + l) / 2;
-        auto diff = strcmp(localAuthorizationList[m].getIdTag(), idTag);
+        auto diff = strcasecmp(localAuthorizationList[m].getIdTag(), idTag);
         if (diff < 0) {
             l = m + 1;
         } else if (diff > 0) {
@@ -163,7 +163,7 @@ bool AuthorizationList::readJson(JsonArray authlistJson, int listVersion, bool d
 
     std::sort(localAuthorizationList.begin(), localAuthorizationList.end(),
             [] (const AuthorizationData& lhs, const AuthorizationData& rhs) {
-                return strcmp(lhs.getIdTag(), rhs.getIdTag()) < 0;
+                return strcasecmp(lhs.getIdTag(), rhs.getIdTag()) < 0;
             });
     
     this->listVersion = listVersion;

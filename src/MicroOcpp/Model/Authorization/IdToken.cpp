@@ -103,7 +103,7 @@ const char *IdToken::getTypeCstr() const {
 }
 
 bool IdToken::equals(const IdToken& other) {
-    return type == other.type && !strcmp(idToken, other.idToken);
+    return type == other.type && !strcasecmp(idToken, other.idToken);
 }
 
 #endif // MO_ENABLE_V201

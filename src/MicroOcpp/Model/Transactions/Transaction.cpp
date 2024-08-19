@@ -63,7 +63,7 @@ const char * Transaction::getStopIdTag(){
 
 bool Transaction::setStopIdTag(const char *idTag){
     clearAuthorized();
-    if(strcmp(getIdTag(),idTag)==0){
+    if(strcasecmp(getIdTag(),idTag)==0){
         notifyIdToken = true;
     }else{
         stopIdToken = std::unique_ptr<IdToken>(new IdToken(idTag));

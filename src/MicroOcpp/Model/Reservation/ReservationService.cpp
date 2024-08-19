@@ -64,7 +64,7 @@ void ReservationService::loop() {
             if (transaction && transaction->isAuthorized()) {
                 const char *cIdTag = transaction->getIdTag();
                 if (transaction->getReservationId() == reservation->getReservationId() || 
-                        (cIdTag && !strcmp(cIdTag, reservation->getIdTag()))) {
+                        (cIdTag && !strcasecmp(cIdTag, reservation->getIdTag()))) {
 
                     reservation->clear();
                     break;

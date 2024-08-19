@@ -75,11 +75,11 @@ bool Reservation::matches(const char *idTag, const char *parentIdTag) {
         return true;
     }
 
-    if (idTag && !strcmp(idTag, idTagString->getString())) {
+    if (idTag && !strcasecmp(idTag, idTagString->getString())) {
         return true;
     }
 
-    if (parentIdTag && !strcmp(parentIdTag, parentIdTagString->getString())) {
+    if (parentIdTag && !strcasecmp(parentIdTag, parentIdTagString->getString())) {
         return true;
     }
 

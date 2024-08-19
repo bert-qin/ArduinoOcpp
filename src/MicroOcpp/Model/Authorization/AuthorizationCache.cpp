@@ -26,7 +26,7 @@ MicroOcpp::AuthorizationData *AuthorizationCache::get(const char *idTag)
     auto it = std::find_if(localAuthorizationCache.begin(), localAuthorizationCache.end(),
                            [idTag](const AuthorizationData &data)
                            {
-                               return strcmp(data.getIdTag(), idTag) == 0;
+                               return strcasecmp(data.getIdTag(), idTag) == 0;
                            });
 
     if (it != localAuthorizationCache.end())
@@ -48,7 +48,7 @@ bool AuthorizationCache::add(const char *idTag, JsonObject idTagInfo)
     auto it = std::find_if(localAuthorizationCache.begin(), localAuthorizationCache.end(),
                            [idTag](const AuthorizationData &data)
                            {
-                               return strcmp(data.getIdTag(), idTag) == 0;
+                               return strcasecmp(data.getIdTag(), idTag) == 0;
                            });
 
     if (it != localAuthorizationCache.end())

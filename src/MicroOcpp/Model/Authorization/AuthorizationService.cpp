@@ -285,7 +285,7 @@ void AuthorizationService::notifyAuthorization(const char *idTag, JsonObject idT
 
     //check if parentIdTag definitions mismatch
     if (equivalent &&
-            strcmp(localInfo->getParentIdTag() ? localInfo->getParentIdTag() : "", idTagInfo["parentIdTag"] | "")) {
+            strcasecmp(localInfo->getParentIdTag() ? localInfo->getParentIdTag() : "", idTagInfo["parentIdTag"] | "")) {
         MO_DBG_WARN("local auth list parentIdTag conflict");
         equivalent = false;
     }
